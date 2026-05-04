@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 
+import app.models  # noqa: F401 — registers all ORM classes before any relationship is resolved
+
 from app.core.exceptions import (
     CropSightException,
     cropsight_exception_handler,
