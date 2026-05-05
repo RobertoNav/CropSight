@@ -48,9 +48,9 @@ resource "aws_db_instance" "main" {
   vpc_security_group_ids = [var.sg_rds_id]
   parameter_group_name   = aws_db_parameter_group.postgres15.name
 
-  multi_az               = var.db_multi_az
-  publicly_accessible    = false
-  deletion_protection    = false
+  multi_az            = var.db_multi_az
+  publicly_accessible = false
+  deletion_protection = false
 
   backup_retention_period = 7
   backup_window           = "03:00-04:00"

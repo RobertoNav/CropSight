@@ -294,10 +294,10 @@ locals {
 }
 
 resource "aws_launch_template" "backend" {
-  name_prefix            = "cropsight-${var.env}-ec2-lt-"
-  image_id               = data.aws_ami.al2023.id
-  instance_type          = var.instance_type
-  user_data              = local.user_data
+  name_prefix   = "cropsight-${var.env}-ec2-lt-"
+  image_id      = data.aws_ami.al2023.id
+  instance_type = var.instance_type
+  user_data     = local.user_data
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ec2.name
@@ -307,7 +307,7 @@ resource "aws_launch_template" "backend" {
 
   metadata_options {
     http_endpoint               = "enabled"
-    http_tokens                 = "required"   # IMDSv2
+    http_tokens                 = "required" # IMDSv2
     http_put_response_hop_limit = 1
   }
 
