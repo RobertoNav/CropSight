@@ -16,7 +16,7 @@ export default function PredictionsHistoryPage() {
     }
   });
 
-  if (isLoading) return <LoadingSpinner />;[cite: 2]
+  if (isLoading) return <LoadingSpinner />;
 
   return (
     <div className="container mx-auto p-6">

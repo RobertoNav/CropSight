@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { ImageUploader } from "@/components/forms/ImageUploader";
 import { PredictionResponse } from "@/hooks/usePrediction";
-import { Card } from "@/components/ui/Card";[cite: 2]
+import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";import { FeedbackForm } from "@/components/forms/FeedbackForm";
-[cite: 2]
 
 export default function PredictPage() {
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
@@ -49,7 +48,7 @@ export default function PredictPage() {
                   </div>
                 </div>
 
-                <Badge variant="outline">Versión del modelo: {prediction.model_version}</Badge>[cite: 1]
+                <Badge variant="info">Versión del modelo: {prediction.model_version}</Badge>
 
                 <div className="pt-4">
                   <button 
