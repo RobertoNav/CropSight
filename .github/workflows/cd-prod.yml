@@ -43,7 +43,7 @@ jobs:
       - name: Install ML dependencies
         run: |
           cd ml
-          pip install -r requirements.txt || true
+          pip install pip install torch numpy pillow || true
 
       - name: Run ML tests
         run: |
