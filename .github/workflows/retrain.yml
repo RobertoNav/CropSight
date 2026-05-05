@@ -1,0 +1,68 @@
+name: Retrain_Model_CICD
+
+on:
+  workflow_dispatch:
+    inputs:
+      crop:
+        description: "Crop to retrain (tomato / potato / corn / grape)"
+        required: true
+        type: choice
+        options: [tomato, potato, corn, grape]
+      epochs:
+        description: "Number of training epochs"
+        required: false
+        default: "15"
+      learning_rate:
+        description: "Learning rate"
+        required: false
+        default: "0.0001"
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ secrets.AWS_DEFAULT_REGION }}
+
+      - name: Download processed data from S3
+        run: |
+          aws s3 sync s3://${{ secrets.S3_BUCKET }}/data/processed/${{ github.event.inputs.crop }} \
+            data/processed/${{ github.event.inputs.crop }}
+
+      - name: Run training
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+        run: |
+          python -m src.training.train \
+            --crop        ${{ github.event.inputs.crop }} \
+            --data_dir    data/processed/${{ github.event.inputs.crop }} \
+            --epochs      ${{ github.event.inputs.epochs }} \
+            --lr          ${{ github.event.inputs.learning_rate }}
+
+      - name: Upload trained model to S3
+        run: |
+          MODEL_PATH="models/${{ github.event.inputs.crop }}/model.pt"
+          S3_PATH="s3://${{ secrets.S3_BUCKET }}/models/${{ github.sha }}/${{ github.event.inputs.crop }}/model.pt"
+
+          echo "Uploading model to $S3_PATH"
+          aws s3 cp $MODEL_PATH $S3_PATH
+
+      - name: Update latest model pointer
+        run: |
+          aws s3 cp models/${{ github.event.inputs.crop }}/model.pt \
+            s3://${{ secrets.S3_BUCKET }}/models/latest/${{ github.event.inputs.crop }}/model.pt
