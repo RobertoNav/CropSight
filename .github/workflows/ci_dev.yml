@@ -47,7 +47,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-      - run: pip install torch numpy pillow
+      - run: pip install torch numpy pillow pytest
       - run: pytest tests/ -v
 
   validate-infra:
