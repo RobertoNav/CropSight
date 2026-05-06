@@ -372,7 +372,7 @@ resource "aws_launch_template" "backend" {
   image_id      = data.aws_ami.al2023.id
   instance_type = var.instance_type
   user_data     = local.user_data
-  key_name = var.env == "dev" ? "cropsight-dev-key" : null
+  key_name      = var.env == "dev" ? "cropsight-dev-key" : null
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ec2.name
