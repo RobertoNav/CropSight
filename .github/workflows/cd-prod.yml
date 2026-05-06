@@ -3,10 +3,10 @@ name: CropSight Infrastructure
 on:
   push:
     branches:
-      - main # Deploys to PROD
-      - dev  # Deploys to dev
+      - main
+      - dev
     paths:
-      - "infra/**" # Only when infra files change
+      - "infra/**"
   pull_request:
     branches:
       - main
@@ -42,7 +42,9 @@ jobs:
 
       - name: Terraform Init
         working-directory: ${{ env.WORKING_DIR }}
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="key=prod/terraform.tfstate"
 
       - name: Terraform Plan (prod preview)
         id: plan
@@ -96,16 +98,17 @@ jobs:
 
       - name: Terraform Init
         working-directory: ${{ env.WORKING_DIR }}
-        run: terraform init
-    
-      - name: Terraform Import IAM Role (if exists)
+        run: |
+          terraform init \
+            -backend-config="key=dev/terraform.tfstate"
+
+      - name: Import existing dev resources
         working-directory: ${{ env.WORKING_DIR }}
         env:
           TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
         run: |
-          terraform import \
-          -var-file=environments/dev.tfvars \
-          module.compute.aws_iam_role.ec2 cropsight-dev-ec2-role || true
+          terraform import -var-file=environments/dev.tfvars module.compute.aws_iam_role.ec2 cropsight-dev-ec2-role || true
+          terraform import -var-file=environments/dev.tfvars module.compute.aws_iam_instance_profile.ec2 cropsight-dev-ec2-profile || true
 
       - name: Terraform Apply - dev
         working-directory: ${{ env.WORKING_DIR }}
@@ -147,7 +150,17 @@ jobs:
 
       - name: Terraform Init
         working-directory: ${{ env.WORKING_DIR }}
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="key=prod/terraform.tfstate"
+
+      - name: Import existing prod resources
+        working-directory: ${{ env.WORKING_DIR }}
+        env:
+          TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+        run: |
+          terraform import -var-file=environments/prod.tfvars module.compute.aws_iam_role.ec2 cropsight-prod-ec2-role || true
+          terraform import -var-file=environments/prod.tfvars module.compute.aws_iam_instance_profile.ec2 cropsight-prod-ec2-profile || true
 
       - name: Terraform Apply - Prod
         working-directory: ${{ env.WORKING_DIR }}
@@ -176,11 +189,9 @@ jobs:
               echo "Smoke tests passed on attempt ${attempt}"
               exit 0
             fi
-
             echo "Attempt ${attempt} failed; waiting before retry..."
             sleep 15
           done
-
           echo "Smoke tests failed after all retries"
           exit 1
 
@@ -193,9 +204,9 @@ jobs:
         run: |
           echo "Smoke tests failed. Rolling back to commit ${PREVIOUS_SHA}."
           git checkout --force "${PREVIOUS_SHA}"
-
           cd infra
-          terraform init
+          terraform init \
+            -backend-config="key=prod/terraform.tfstate"
           terraform apply \
             -var-file=environments/prod.tfvars \
             -auto-approve \
