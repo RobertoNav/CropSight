@@ -32,30 +32,39 @@ const toneByStatus = {
   suspended: "pending",
 } as const;
 
-const toneByActivity = {
-  success: { bg: "rgba(74,143,74,0.1)", color: "var(--green-900)" },
-  warning: { bg: "rgba(214,137,16,0.12)", color: "var(--warning)" },
-  info: { bg: "rgba(26,68,128,0.1)", color: "#1a4480" },
-} as const;
-
-const toneByTrend = {
-  up: { bg: "rgba(74,143,74,0.1)", color: "var(--green-900)", label: "Up" },
-  down: { bg: "rgba(209,63,63,0.1)", color: "var(--error)", label: "Down" },
-  stable: { bg: "var(--gray-100)", color: "var(--gray-600)", label: "Stable" },
-} as const;
-
 export function CompanyMetrics() {
   const metrics = companyAdminMock.metrics;
-  const zones = [...metrics.zonePerformance].sort(
-    (left, right) => right.predictions - left.predictions,
+  const predictionsByDay = [...metrics.predictions_by_day].sort(
+    (left, right) =>
+      new Date(left.date).getTime() - new Date(right.date).getTime(),
   );
-  const maxPredictions = Math.max(...zones.map((zone) => zone.predictions), 1);
+  const topLabels = [...metrics.top_labels].sort(
+    (left, right) => right.count - left.count,
+  );
+  const maxDailyPredictions = Math.max(
+    ...predictionsByDay.map((entry) => entry.count),
+    1,
+  );
+  const maxLabelCount = Math.max(...topLabels.map((entry) => entry.count), 1);
+  const primaryLabel = topLabels[0];
+  const peakDay = predictionsByDay.reduce<
+    (typeof predictionsByDay)[number] | null
+  >((highest, entry) => {
+    if (!highest || entry.count > highest.count) {
+      return entry;
+    }
+
+    return highest;
+  }, null);
+  const averagePerDay = Math.round(
+    metrics.total_predictions / Math.max(predictionsByDay.length, 1),
+  );
 
   return (
     <CompanyShell
       activePath="/company/metrics"
       title="Company metrics"
-      description="A compact operational summary of weekly usage, feedback rhythm, and the zones driving the most activity."
+      description="A compact operational summary of prediction volume, review rhythm, and the labels dominating the selected date range."
       statusTone={toneByStatus[companyAdminMock.company.status]}
       statusLabel={
         companyAdminMock.company.status === "active"
@@ -71,28 +80,34 @@ export function CompanyMetrics() {
         }}
       >
         <MetricCard
-          label="Predictions this week"
-          value={metrics.predictionsThisWeek}
-          sub="Company-wide activity"
+          label="Total predictions"
+          value={metrics.total_predictions}
+          sub={formatRangeLabel(predictionsByDay.length)}
         />
         <MetricCard
           label="Feedback rate"
-          value={formatPercent(metrics.feedbackRate)}
+          value={formatPercent(metrics.feedback_rate)}
           sub="Reviewed predictions"
         />
         <MetricCard
-          label="Weekly growth"
-          value={formatGrowth(metrics.weeklyGrowth)}
-          sub="Compared with last week"
-          trend={{
-            label: `${Math.abs(metrics.weeklyGrowth)}%`,
-            up: metrics.weeklyGrowth >= 0,
-          }}
+          label="Average per day"
+          value={averagePerDay}
+          sub={
+            peakDay
+              ? `Peak day: ${formatShortDate(peakDay.date)}`
+              : "No daily activity yet"
+          }
         />
         <MetricCard
           label="Top label"
-          value={metrics.topLabel}
-          sub="Most common detection"
+          value={
+            primaryLabel ? formatLabel(primaryLabel.label) : "No labels yet"
+          }
+          sub={
+            primaryLabel
+              ? `${primaryLabel.count} detections`
+              : "No detections recorded"
+          }
         />
       </section>
 
@@ -105,29 +120,55 @@ export function CompanyMetrics() {
         }}
       >
         <PanelCard
-          eyebrow="Performance"
-          title="Zone performance"
-          description="A lightweight breakdown of where prediction volume and review completion are concentrating this week."
+          eyebrow="Volume"
+          title="Prediction activity by day"
+          description="A lightweight breakdown of prediction volume across the selected range, based only on the backend daily series."
         >
-          <div style={{ display: "grid", gap: "1rem" }}>
-            {zones.map((zone) => (
-              <ZonePerformanceRow
-                key={zone.zone}
-                zone={zone}
-                maxPredictions={maxPredictions}
+          <div
+            style={{
+              display: "grid",
+              gap: "1rem",
+              maxHeight: predictionsByDay.length > 8 ? 420 : "none",
+              overflowY: predictionsByDay.length > 8 ? "auto" : "visible",
+              paddingRight: predictionsByDay.length > 8 ? ".35rem" : 0,
+            }}
+          >
+            {predictionsByDay.map((entry) => (
+              <PredictionDayRow
+                key={entry.date}
+                entry={entry}
+                maxCount={maxDailyPredictions}
               />
             ))}
           </div>
+          {predictionsByDay.length > 8 ? (
+            <p
+              style={{
+                ...bodyTextStyle,
+                fontSize: ".82rem",
+                marginTop: ".85rem",
+              }}
+            >
+              The full daily series stays in one view and scrolls vertically
+              when the selected range gets long, instead of splitting the
+              timeline with pagination.
+            </p>
+          ) : null}
         </PanelCard>
 
         <PanelCard
-          eyebrow="Signals"
-          title="Recent activity"
-          description="Short operational notes that help admins read the week without digging into a full analytics dashboard."
+          eyebrow="Labels"
+          title="Most detected labels"
+          description="A ranked list of the labels most often returned in the selected range, using the exact backend response shape."
         >
           <div style={{ display: "grid", gap: ".9rem" }}>
-            {metrics.recentActivity.map((item) => (
-              <ActivityItem key={item.id} item={item} />
+            {topLabels.map((item) => (
+              <TopLabelRow
+                key={item.label}
+                item={item}
+                maxCount={maxLabelCount}
+                totalPredictions={metrics.total_predictions}
+              />
             ))}
           </div>
         </PanelCard>
@@ -196,15 +237,14 @@ function PanelCard({
   );
 }
 
-function ZonePerformanceRow({
-  zone,
-  maxPredictions,
+function PredictionDayRow({
+  entry,
+  maxCount,
 }: {
-  zone: CompanyMetricsSnapshot["zonePerformance"][number];
-  maxPredictions: number;
+  entry: CompanyMetricsSnapshot["predictions_by_day"][number];
+  maxCount: number;
 }) {
-  const width = `${Math.max((zone.predictions / maxPredictions) * 100, 18)}%`;
-  const trendTone = toneByTrend[zone.trend];
+  const width = `${Math.max((entry.count / maxCount) * 100, 18)}%`;
 
   return (
     <article
@@ -226,16 +266,28 @@ function ZonePerformanceRow({
       >
         <div>
           <p style={{ fontWeight: 600, color: "var(--gray-900)" }}>
-            {zone.zone}
+            {formatLongDate(entry.date)}
           </p>
           <p
             style={{ ...bodyTextStyle, fontSize: ".84rem", marginTop: ".2rem" }}
           >
-            {zone.predictions} predictions · {formatPercent(zone.feedbackRate)}{" "}
-            feedback
+            {entry.count} predictions recorded
           </p>
         </div>
-        <TrendPill trend={zone.trend} label={trendTone.label} />
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            padding: ".32rem .62rem",
+            borderRadius: 999,
+            background: "rgba(74,143,74,0.1)",
+            color: "var(--green-900)",
+            fontSize: ".74rem",
+            fontWeight: 700,
+          }}
+        >
+          {entry.count}
+        </span>
       </div>
 
       <div
@@ -260,12 +312,20 @@ function ZonePerformanceRow({
   );
 }
 
-function ActivityItem({
+function TopLabelRow({
   item,
+  maxCount,
+  totalPredictions,
 }: {
-  item: CompanyMetricsSnapshot["recentActivity"][number];
+  item: CompanyMetricsSnapshot["top_labels"][number];
+  maxCount: number;
+  totalPredictions: number;
 }) {
-  const tone = toneByActivity[item.tone];
+  const width = `${Math.max((item.count / maxCount) * 100, 18)}%`;
+  const share =
+    totalPredictions > 0
+      ? Math.round((item.count / totalPredictions) * 100)
+      : 0;
 
   return (
     <article
@@ -292,18 +352,26 @@ function ActivityItem({
           style={{
             display: "inline-flex",
             alignItems: "center",
-            gap: ".45rem",
             padding: ".32rem .62rem",
             borderRadius: 999,
-            background: tone.bg,
-            color: tone.color,
+            background: "rgba(26,68,128,0.1)",
+            color: "#1a4480",
             fontSize: ".72rem",
             fontWeight: 700,
             letterSpacing: ".04em",
             textTransform: "uppercase",
           }}
         >
-          {item.value}
+          {share}% share
+        </span>
+        <span
+          style={{
+            fontSize: ".82rem",
+            fontWeight: 600,
+            color: "var(--gray-700)",
+          }}
+        >
+          {item.count} detections
         </span>
       </div>
       <div style={{ display: "grid", gap: ".25rem" }}>
@@ -314,42 +382,28 @@ function ActivityItem({
             color: "var(--gray-900)",
           }}
         >
-          {item.title}
+          {formatLabel(item.label)}
         </h3>
-        <p style={{ ...bodyTextStyle, fontSize: ".88rem" }}>
-          {item.description}
-        </p>
+        <div
+          style={{
+            height: 8,
+            borderRadius: 999,
+            background: "rgba(28,28,26,0.08)",
+            overflow: "hidden",
+            marginTop: ".35rem",
+          }}
+        >
+          <div
+            style={{
+              width,
+              height: "100%",
+              borderRadius: 999,
+              background: "linear-gradient(90deg, #1a4480, #5f8fc9)",
+            }}
+          />
+        </div>
       </div>
     </article>
-  );
-}
-
-function TrendPill({
-  trend,
-  label,
-}: {
-  trend: CompanyMetricsSnapshot["zonePerformance"][number]["trend"];
-  label: string;
-}) {
-  const tone = toneByTrend[trend];
-
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: ".4rem",
-        padding: ".32rem .62rem",
-        borderRadius: 999,
-        background: tone.bg,
-        color: tone.color,
-        fontSize: ".74rem",
-        fontWeight: 700,
-      }}
-    >
-      {trend === "up" ? "↑" : trend === "down" ? "↓" : "→"}
-      {label}
-    </span>
   );
 }
 
@@ -357,6 +411,27 @@ function formatPercent(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
-function formatGrowth(value: number) {
-  return `${value > 0 ? "+" : ""}${value}%`;
+function formatLabel(value: string) {
+  return value.replaceAll("_", " ");
+}
+
+function formatLongDate(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
+
+function formatShortDate(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
+
+function formatRangeLabel(days: number) {
+  return days === 1 ? "1 tracked day" : `${days} tracked days`;
 }

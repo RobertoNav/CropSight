@@ -76,8 +76,8 @@ function CompanyRequestsContent() {
       .filter((request) => {
         const matchesSearch =
           normalizedSearch.length === 0 ||
-          request.name.toLowerCase().includes(normalizedSearch) ||
-          request.email.toLowerCase().includes(normalizedSearch);
+          request.user_name.toLowerCase().includes(normalizedSearch) ||
+          request.user_email.toLowerCase().includes(normalizedSearch);
 
         const matchesStatus =
           statusFilter === "all" || request.status === statusFilter;
@@ -91,8 +91,8 @@ function CompanyRequestsContent() {
         if (priorityDifference !== 0) return priorityDifference;
 
         return (
-          new Date(right.requestedAt).getTime() -
-          new Date(left.requestedAt).getTime()
+          new Date(right.created_at).getTime() -
+          new Date(left.created_at).getTime()
         );
       });
   }, [requests, searchTerm, statusFilter]);
@@ -147,8 +147,8 @@ function CompanyRequestsContent() {
 
     toast(
       nextStatus === "approved"
-        ? `Request approved for ${selectedRequest.name}.`
-        : `Request rejected for ${selectedRequest.name}.`,
+        ? `Request approved for ${selectedRequest.user_name}.`
+        : `Request rejected for ${selectedRequest.user_name}.`,
       nextStatus === "approved" ? "success" : "warning",
     );
 
