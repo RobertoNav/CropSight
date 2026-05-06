@@ -26,18 +26,20 @@ export default function RegisterPage() {
     }
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch('/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          full_name: fd.get('full_name'),
-          email:     fd.get('email'),
+          name: fd.get('full_name'),
+          email: fd.get('email'),
           password,
         }),
       })
-      if (!res.ok) {
+      if (res.ok) {
         const data = await res.json()
-        throw new Error(data.detail || 'Registration failed')
+        document.cookie = `access_token=${data.access_token}; path=/`
+        document.cookie = `refresh_token=${data.refresh_token}; path=/`
+        window.location.href = '/dashboard'
       }
       window.location.href = '/dashboard'
     } catch (err: any) {

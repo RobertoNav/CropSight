@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Logo } from '@/components/ui/Logo'
 
-type Company = { id: string; name: string; country: string; member_count: number }
+type Company = { id: string; name: string; sector: string; logo_url: string | null }
 
 export default function JoinCompanyPage() {
   const [query, setQuery] = useState('')
@@ -24,9 +24,9 @@ export default function JoinCompanyPage() {
     const t = setTimeout(async () => {
       setSearching(true)
       try {
-        const res = await fetch(`/api/companies/search?q=${encodeURIComponent(query)}`)
+        const res = await fetch(`/api/v1/companies/search?name=${encodeURIComponent(query)}`)
         const data = await res.json()
-        setResults(data.items ?? [])
+        setResults(Array.isArray(data) ? data : [])
       } catch {
         setResults([])
       } finally {
@@ -42,10 +42,10 @@ export default function JoinCompanyPage() {
     setError('')
     setLoading(true)
     try {
-      const res = await fetch('/api/companies/join-requests', {
+      const res = await fetch('/api/v1/companies/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ company_id: selected.id, message }),
+        body: JSON.stringify({ company_id: selected.id }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -117,7 +117,7 @@ export default function JoinCompanyPage() {
                       <div className="company-avatar">{initials(c.name)}</div>
                       <div className="company-info">
                         <div className="company-name">{c.name}</div>
-                        <div className="company-meta">{c.country} · {c.member_count} members</div>
+                        <div className="company-meta">{c.sector}</div>
                       </div>
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                         <path d="M6 4l4 4-4 4" stroke="var(--gray-400)" strokeWidth="1.5" strokeLinecap="round"/>

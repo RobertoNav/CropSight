@@ -16,7 +16,7 @@ export default function LoginPage() {
     setLoading(true)
     const fd = new FormData(e.currentTarget)
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -24,9 +24,11 @@ export default function LoginPage() {
           password: fd.get('password'),
         }),
       })
-      if (!res.ok) {
+      if (res.ok) {
         const data = await res.json()
-        throw new Error(data.detail || 'Invalid credentials')
+        document.cookie = `access_token=${data.access_token}; path=/`
+        document.cookie = `refresh_token=${data.refresh_token}; path=/`
+        window.location.href = '/dashboard'
       }
       window.location.href = '/dashboard'
     } catch (err: any) {

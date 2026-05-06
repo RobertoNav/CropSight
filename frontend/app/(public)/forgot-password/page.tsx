@@ -16,14 +16,13 @@ export default function ForgotPasswordPage() {
     setError('')
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/forgot-password', {
+      const res = await fetch('/api/v1/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.detail || 'Request failed')
+      if (res.status === 204 || res.ok) {
+        setSent(true)
       }
       setSent(true)
     } catch (err: any) {

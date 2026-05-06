@@ -46,14 +46,13 @@ export default function ResetPasswordPage() {
     }
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/reset-password', {
+      const res = await fetch('/api/v1/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, new_password: password }),
       })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.detail || 'Reset failed. The link may have expired.')
+      if (res.status === 204 || res.ok) {
+        setDone(true)
       }
       setDone(true)
     } catch (err: any) {
