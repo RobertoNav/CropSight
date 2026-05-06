@@ -252,6 +252,10 @@ locals {
     set -euxo pipefail
     exec > /var/log/user-data.log 2>&1
 
+    # Asegurar que SSM Agent esté corriendo
+    systemctl enable amazon-ssm-agent
+    systemctl start amazon-ssm-agent
+
     # System updates
     dnf update -y
     dnf install -y python3.11 python3.11-pip git
