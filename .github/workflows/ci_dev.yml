@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [infra]
+  pull_request:
+    branches: [infra]
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+jobs:
+  test-backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: pip install pytest pytest-cov ruff mypy
+      # - run: ruff check app/
+      - run: mypy app/ --ignore-missing-imports --allow-untyped-defs
+      - name: Tests
+        env:
+          ENVIRONMENT: test
+        run: pytest tests/ -v --cov=app
+
+  test-ml:
+    name: ML tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install torch numpy pillow pytest
+      - run: pytest tests/ -v
+
+  validate-infra:
+    name: Terraform validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.7"
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+      - run: terraform validate
+
+  ci-pass:
+    name: CI passed
+    needs: [test-backend, test-ml, validate-infra]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - run: |
+          if [[ "${{ needs.test-backend.result }}"   != "success" ]] ||
+             [[ "${{ needs.test-ml.result }}"        != "success" ]] ||
+             [[ "${{ needs.validate-infra.result }}" != "success" ]]; then
+            exit 1
+          fi
