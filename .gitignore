@@ -1,0 +1,5 @@
+data/
+*.pyc
+*.db
+mlflow-artifacts/
+*.png
