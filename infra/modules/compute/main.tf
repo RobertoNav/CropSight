@@ -381,6 +381,15 @@ resource "aws_launch_template" "backend" {
     http_put_response_hop_limit = 1
   }
 
+  block_device_mappings {
+    device_name = "/dev/xvda"
+    ebs {
+      volume_size           = 30 # default es 8GB, subimos a 30GB
+      volume_type           = "gp3"
+      delete_on_termination = true
+    }
+  }
+
   monitoring {
     enabled = true
   }
