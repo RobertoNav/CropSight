@@ -25,7 +25,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 @router.post("/register", response_model=AuthResponse, status_code=201)
 async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db)):
     # Verificar email único
-    existing = await db.execute(select(User).where(User.email == payload.email))
+    existing = await db.execute(select(User).where(User.email == payload.email, User.deleted_at.is_(None)))
     if existing.scalar_one_or_none():
         raise ConflictException("El email ya está registrado.")
 
@@ -50,7 +50,7 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
 
 @router.post("/login", response_model=AuthResponse)
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == payload.email))
+    result = await db.execute(select(User).where(User.email == payload.email, User.deleted_at.is_(None)))
     user = result.scalar_one_or_none()
 
     # Mensaje genérico: no revelar si el email existe o no
@@ -104,7 +104,7 @@ async def logout(payload: LogoutRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/forgot-password", status_code=204)
 async def forgot_password(payload: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == payload.email))
+    result = await db.execute(select(User).where(User.email == payload.email, User.deleted_at.is_(None)))
     user = result.scalar_one_or_none()
     if user:
         reset_token = create_password_reset_token(str(user.id))
