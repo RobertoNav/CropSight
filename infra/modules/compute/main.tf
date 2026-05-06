@@ -295,15 +295,15 @@ resource "aws_iam_instance_profile" "ec2" {
 
 locals {
   user_data = base64encode(<<-EOF
-    #!/bin/bash
-    exec > /var/log/user-data.log 2>&1
+#!/bin/bash
+exec > /var/log/user-data.log 2>&1
 
-    # System updates
-    dnf update -y
-    dnf install -y python3.11 python3.11-pip git amazon-cloudwatch-agent
+# System updates
+dnf update -y
+dnf install -y python3.11 python3.11-pip git amazon-cloudwatch-agent
 
-    # Configurar CloudWatch Agent
-    cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWA'
+# Configurar CloudWatch Agent
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWA'
 {
   "logs": {
     "logs_collected": {
@@ -313,11 +313,6 @@ locals {
             "file_path": "/var/log/user-data.log",
             "log_group_name": "/cropsight/dev/user-data",
             "log_stream_name": "{instance_id}"
-          },
-          {
-            "file_path": "/var/log/messages",
-            "log_group_name": "/cropsight/dev/messages",
-            "log_stream_name": "{instance_id}"
           }
         ]
       }
@@ -326,24 +321,24 @@ locals {
 }
 CWA
 
-    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
-      -a fetch-config -m ec2 \
-      -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
 
-    # Alias python
-    alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
-    python3 -m pip install --upgrade pip
+# Alias python
+alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+python3 -m pip install --upgrade pip
 
-    # Clone CropSight repository
-    cd /opt
-    git clone https://github.com/RobertoNav/CropSight.git app
-    cd app
+# Clone repo
+cd /opt
+git clone https://github.com/RobertoNav/CropSight.git app
+cd app
 
-    # Install backend dependencies
-    python3 -m pip install -r backend/requirements.txt
+# Instalar dependencias
+python3 -m pip install -r backend/requirements.txt
 
-    # Create systemd service
-    cat > /etc/systemd/system/cropsight.service << 'SERVICE'
+# Systemd service
+cat > /etc/systemd/system/cropsight.service << 'SERVICE'
 [Unit]
 Description=CropSight FastAPI Backend
 After=network.target
@@ -351,7 +346,7 @@ After=network.target
 [Service]
 User=ec2-user
 WorkingDirectory=/opt/app/backend
-ExecStart=/usr/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
+ExecStart=/usr/bin/python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=5
 Environment=ENV=${var.env}
@@ -360,10 +355,10 @@ Environment=ENV=${var.env}
 WantedBy=multi-user.target
 SERVICE
 
-    systemctl daemon-reload
-    systemctl enable cropsight
-    systemctl start cropsight
-  EOF
+systemctl daemon-reload
+systemctl enable cropsight
+systemctl start cropsight
+EOF
   )
 }
 
