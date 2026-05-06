@@ -1,0 +1,26 @@
+# --- Core training / inference ---
+torch==2.4.1
+torchvision==0.19.1
+timm==1.0.11
+
+# --- MLflow tracking + registry ---
+mlflow==2.16.2
+boto3==1.35.36          # S3 artifact store
+
+# --- Data / metrics ---
+numpy==1.26.4
+pillow==10.4.0
+scikit-learn==1.5.2
+matplotlib==3.9.2
+seaborn==0.13.2
+pandas==2.2.3
+tqdm==4.66.5
+
+# --- Inference service ---
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.12
+
+# --- Test + lint (CI) ---
+pytest==8.3.3
+ruff==0.6.9

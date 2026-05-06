@@ -3,20 +3,33 @@ CropSight Inference Service
 
 Endpoints:
     POST /predict  — Upload a crop image and get a diagnosis.
-    GET  /health   — Health check.
+    GET  /health   — Health check (reports loaded models + their versions).
 
-Environment variables required:
-    MLFLOW_TRACKING_URI
-    CROPS  (comma-separated list e.g. tomato,potato,corn,grape)
+Environment variables:
+    MLFLOW_TRACKING_URI    MLflow tracking server (default http://localhost:5000)
+    MLFLOW_MODEL_STAGE     Registry stage to load (default "Production",
+                           set to "Staging" for pre-prod environments)
+    CROPS                  Comma-separated crops to load on startup
+                           (default "tomato,potato,corn,grape")
+
+The service loads one PyTorch model per crop from the MLflow Model Registry on
+startup and caches both the model and its class_names.json (logged as an
+artifact at training time) so /predict can return human-readable class names.
 """
-import os
-import io
-from typing import Dict
+from __future__ import annotations
 
-import torch
+import io
+import json
+import os
+from typing import Dict, List, Optional
+
+import mlflow
+import mlflow.artifacts
 import mlflow.pytorch
-from fastapi import FastAPI, File, UploadFile, HTTPException
+import torch
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from mlflow.tracking import MlflowClient
 from PIL import Image
 from pydantic import BaseModel
 
@@ -31,25 +44,68 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Model registry ──────────────────────────────────────────────────────────
-CROPS: list[str] = os.getenv("CROPS", "tomato,potato,corn,grape").split(",")
+# ── Config ──────────────────────────────────────────────────────────────────
+CROPS: List[str] = [c.strip() for c in os.getenv("CROPS", "tomato,potato,corn,grape").split(",") if c.strip()]
+MODEL_STAGE: str = os.getenv("MLFLOW_MODEL_STAGE", "Production")
+TRACKING_URI: str = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+
 MODELS: Dict[str, torch.nn.Module] = {}
-CLASS_NAMES: Dict[str, list] = {}
+CLASS_NAMES: Dict[str, List[str]] = {}
+MODEL_VERSIONS: Dict[str, str] = {}
+
+
+def _model_name(crop: str) -> str:
+    return f"cropsight-{crop}"
+
+
+def _load_class_names(client: MlflowClient, run_id: str) -> Optional[List[str]]:
+    """Download class_names.json from the run's artifacts. Returns None on failure."""
+    try:
+        local_path = mlflow.artifacts.download_artifacts(
+            run_id=run_id, artifact_path="class_names.json"
+        )
+        with open(local_path) as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            return [str(x) for x in data]
+        # Defensive: some training scripts log {"classes": [...]} instead.
+        if isinstance(data, dict) and "classes" in data:
+            return [str(x) for x in data["classes"]]
+        return None
+    except Exception as exc:
+        print(f"[startup] WARN  could not fetch class_names.json for run {run_id}: {exc}")
+        return None
 
 
 @app.on_event("startup")
-def load_models():
-    """Load all crop models from MLflow Model Registry on startup."""
-    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000"))
+def load_models() -> None:
+    """Load every configured crop model from the registry at the configured stage."""
+    mlflow.set_tracking_uri(TRACKING_URI)
+    client = MlflowClient()
+    print(f"[startup] tracking_uri={TRACKING_URI} stage={MODEL_STAGE} crops={CROPS}")
+
     for crop in CROPS:
-        uri = f"models:/cropsight-{crop}/Production"
+        name = _model_name(crop)
+        uri = f"models:/{name}/{MODEL_STAGE}"
         try:
-            model = mlflow.pytorch.load_model(uri)
-            model.eval()
+            versions = client.get_latest_versions(name, stages=[MODEL_STAGE])
+            if not versions:
+                print(f"[startup] SKIP  {name}: no version in stage {MODEL_STAGE}")
+                continue
+
+            mv = versions[0]
+            model = mlflow.pytorch.load_model(uri, map_location="cpu")
+            model.cpu().eval()
             MODELS[crop] = model
-            print(f"[startup] Loaded model for {crop}")
-        except Exception as e:
-            print(f"[startup] WARNING: Could not load model for {crop}: {e}")
+            MODEL_VERSIONS[crop] = mv.version
+
+            class_names = _load_class_names(client, mv.run_id)
+            if class_names:
+                CLASS_NAMES[crop] = class_names
+
+            print(f"[startup] OK    {name} v{mv.version} ({MODEL_STAGE}) — {len(class_names or [])} classes")
+        except Exception as exc:
+            print(f"[startup] FAIL  {name}/{MODEL_STAGE}: {exc}")
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
@@ -57,42 +113,64 @@ class PredictionResponse(BaseModel):
     crop: str
     predicted_class: str
     confidence: float
-    model_version: str = "Production"
+    model_stage: str
+    model_version: str
+
+
+class HealthResponse(BaseModel):
+    status: str
+    stage: str
+    tracking_uri: str
+    models_loaded: List[str]
+    model_versions: Dict[str, str]
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
-@app.get("/health")
-def health():
-    loaded = [c for c in CROPS if c in MODELS]
-    return {"status": "ok", "models_loaded": loaded}
+@app.get("/health", response_model=HealthResponse)
+def health() -> HealthResponse:
+    return HealthResponse(
+        status="ok" if MODELS else "degraded",
+        stage=MODEL_STAGE,
+        tracking_uri=TRACKING_URI,
+        models_loaded=sorted(MODELS.keys()),
+        model_versions=MODEL_VERSIONS,
+    )
 
 
 @app.post("/predict", response_model=PredictionResponse)
-async def predict(crop: str, file: UploadFile = File(...)):
+async def predict(crop: str, file: UploadFile = File(...)) -> PredictionResponse:
     if crop not in CROPS:
-        raise HTTPException(status_code=400, detail=f"Crop '{crop}' not supported. Choose from: {CROPS}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Crop '{crop}' not supported. Choose from: {CROPS}",
+        )
     if crop not in MODELS:
-        raise HTTPException(status_code=503, detail=f"Model for '{crop}' is not available.")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Model for '{crop}' is not available at stage {MODEL_STAGE}.",
+        )
 
-    # Read and preprocess image
     contents = await file.read()
-    image = Image.open(io.BytesIO(contents)).convert("RGB")
-    transform = get_inference_transforms()
-    tensor = transform(image).unsqueeze(0)  # (1 C H W)
+    try:
+        image = Image.open(io.BytesIO(contents)).convert("RGB")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image file.")
 
-    # Inference
-    model = MODELS[crop]
+    tensor = get_inference_transforms()(image).unsqueeze(0)  # (1, C, H, W)
+
     with torch.no_grad():
-        logits = model(tensor)
+        logits = MODELS[crop](tensor)
         probs = torch.softmax(logits, dim=1)
         confidence, pred_idx = probs.max(dim=1)
 
-    # Class name lookup (loaded from MLflow artifact or fallback index)
+    idx = int(pred_idx.item())
     names = CLASS_NAMES.get(crop, [])
-    predicted_class = names[pred_idx.item()] if names else str(pred_idx.item())
+    predicted_class = names[idx] if 0 <= idx < len(names) else str(idx)
 
     return PredictionResponse(
         crop=crop,
         predicted_class=predicted_class,
-        confidence=round(confidence.item(), 4),
+        confidence=round(float(confidence.item()), 4),
+        model_stage=MODEL_STAGE,
+        model_version=MODEL_VERSIONS.get(crop, "unknown"),
     )

@@ -1,0 +1,13 @@
+# Datasets — never committed
+archive/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Python (catch-all; per-subproject .gitignore handles the rest)
+__pycache__/
+*.py[cod]
+.venv/
