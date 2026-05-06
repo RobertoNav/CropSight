@@ -120,8 +120,9 @@ def main(args):
         cm_path = save_confusion_matrix(test_labels, test_preds, class_names)
         mlflow.log_artifact(cm_path)
 
-        # Log model
-        mlflow.pytorch.log_model(model, artifact_path="model")
+        # Guardar modelo manualmente (evita error de MLflow en Windows)
+        torch.save(model.state_dict(), "model_state_dict.pth")
+        mlflow.log_artifact("model_state_dict.pth")
         print(f"Run complete | test_acc={test_acc:.4f} test_f1={test_f1:.4f}")
 
 
