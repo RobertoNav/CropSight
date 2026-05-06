@@ -177,6 +177,48 @@ resource "aws_security_group" "mlflow" {
   }
 }
 
+
+# --- Bastion Security Group ---
+resource "aws_security_group" "bastion" {
+  count       = var.env == "dev" ? 1 : 0
+  name        = "cropsight-${var.env}-sg-bastion"
+  description = "SSH access to bastion"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "cropsight-${var.env}-sg-bastion"
+  }
+}
+
+# --- Bastion Host ---
+resource "aws_instance" "bastion" {
+  count                       = var.env == "dev" ? 1 : 0
+  ami                         = data.aws_ami.al2023.id
+  instance_type               = "t3.micro"
+  subnet_id                   = var.public_subnet_ids[0]
+  key_name                    = "cropsight-dev-key"
+  vpc_security_group_ids      = [aws_security_group.bastion[0].id]
+  associate_public_ip_address = true
+
+  tags = {
+    Name = "cropsight-${var.env}-bastion"
+  }
+}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # IAM — EC2 Instance Profile
 # ══════════════════════════════════════════════════════════════════════════════
@@ -330,6 +372,7 @@ resource "aws_launch_template" "backend" {
   image_id      = data.aws_ami.al2023.id
   instance_type = var.instance_type
   user_data     = local.user_data
+  key_name      = var.env == "dev" ? "cropsight-dev-key" : null
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ec2.name
