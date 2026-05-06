@@ -249,7 +249,8 @@ resource "aws_iam_instance_profile" "ec2" {
 locals {
   user_data = base64encode(<<-EOF
     #!/bin/bash
-    set -e
+    set -euxo pipefail
+    exec > /var/log/user-data.log 2>&1
 
     # System updates
     dnf update -y
@@ -261,15 +262,14 @@ locals {
 
     # Clone CropSight repository
     cd /opt
-    git clone https://github.com/RobertoNav/CropSight.git app || true
+    git clone https://github.com/RobertoNav/CropSight.git app
     cd app
 
     # Install backend dependencies
-    python3 -m pip install -r backend/requirements.txt || \
-      python3 -m pip install fastapi uvicorn boto3 psycopg2-binary
+    python3 -m pip install -r backend/requirements.txt
 
     # Create systemd service for FastAPI
-    cat > /etc/systemd/system/cropsight.service <<SERVICE
+    cat > /etc/systemd/system/cropsight.service << 'SERVICE'
     [Unit]
     Description=CropSight FastAPI Backend
     After=network.target
@@ -356,7 +356,7 @@ resource "aws_lb_target_group" "backend" {
   target_type = "instance"
 
   health_check {
-    path                = "/health"
+    path                = "/api/v1/health"
     protocol            = "HTTP"
     port                = "8000"
     healthy_threshold   = 2
