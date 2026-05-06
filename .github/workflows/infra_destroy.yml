@@ -9,7 +9,6 @@ on:
         type: choice
         options:
           - dev
-          - staging
           - prod
       confirm:
         description: 'Escribe "destroy" para confirmar'
@@ -53,7 +52,9 @@ jobs:
       # ── Terraform Init (lee el state del S3 backend) ────────────────────────
       - name: Terraform Init
         working-directory: ${{ env.WORKING_DIR }}
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="key=${{ github.event.inputs.environment }}/terraform.tfstate"
 
       # ── Plan del destroy (para ver qué va a borrar antes de hacerlo) ────────
       - name: Terraform Plan Destroy
