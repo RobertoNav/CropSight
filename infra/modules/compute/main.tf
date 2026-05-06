@@ -233,6 +233,11 @@ resource "aws_iam_role_policy_attachment" "ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+resource "aws_iam_role_policy_attachment" "cloudwatch" {
+  role       = aws_iam_role.ec2.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
 resource "aws_iam_instance_profile" "ec2" {
   name = "cropsight-${var.env}-ec2-profile"
   role = aws_iam_role.ec2.name
@@ -249,16 +254,39 @@ resource "aws_iam_instance_profile" "ec2" {
 locals {
   user_data = base64encode(<<-EOF
     #!/bin/bash
-    set -euxo pipefail
     exec > /var/log/user-data.log 2>&1
-
-    # Asegurar que SSM Agent esté corriendo
-    systemctl enable amazon-ssm-agent
-    systemctl start amazon-ssm-agent
 
     # System updates
     dnf update -y
-    dnf install -y python3.11 python3.11-pip git
+    dnf install -y python3.11 python3.11-pip git amazon-cloudwatch-agent
+
+    # Configurar CloudWatch Agent
+    cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWA'
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/user-data.log",
+            "log_group_name": "/cropsight/dev/user-data",
+            "log_stream_name": "{instance_id}"
+          },
+          {
+            "file_path": "/var/log/messages",
+            "log_group_name": "/cropsight/dev/messages",
+            "log_stream_name": "{instance_id}"
+          }
+        ]
+      }
+    }
+  }
+}
+CWA
+
+    /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+      -a fetch-config -m ec2 \
+      -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
 
     # Alias python
     alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
@@ -272,23 +300,23 @@ locals {
     # Install backend dependencies
     python3 -m pip install -r backend/requirements.txt
 
-    # Create systemd service for FastAPI
+    # Create systemd service
     cat > /etc/systemd/system/cropsight.service << 'SERVICE'
-    [Unit]
-    Description=CropSight FastAPI Backend
-    After=network.target
+[Unit]
+Description=CropSight FastAPI Backend
+After=network.target
 
-    [Service]
-    User=ec2-user
-    WorkingDirectory=/opt/app/backend
-    ExecStart=/usr/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
-    Restart=always
-    RestartSec=5
-    Environment=ENV=${var.env}
+[Service]
+User=ec2-user
+WorkingDirectory=/opt/app/backend
+ExecStart=/usr/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+Environment=ENV=${var.env}
 
-    [Install]
-    WantedBy=multi-user.target
-    SERVICE
+[Install]
+WantedBy=multi-user.target
+SERVICE
 
     systemctl daemon-reload
     systemctl enable cropsight
