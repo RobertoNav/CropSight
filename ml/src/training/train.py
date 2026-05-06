@@ -14,6 +14,7 @@ import torch
 import torch.nn as nn
 import mlflow
 import mlflow.pytorch
+from mlflow.tracking import MlflowClient
 import numpy as np
 from sklearn.metrics import f1_score, classification_report
 import matplotlib.pyplot as plt
@@ -73,6 +74,10 @@ def save_confusion_matrix(labels, preds, class_names, path="confusion_matrix.png
 
 
 def main(args):
+    import os
+    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
+    mlflow.set_tracking_uri(tracking_uri)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     train_loader, val_loader, test_loader, class_names = build_dataloaders(
@@ -86,7 +91,7 @@ def main(args):
 
     mlflow.set_experiment(f"cropsight-{args.crop}")
 
-    with mlflow.start_run(run_name=f"{args.architecture}_lr{args.lr}_ep{args.epochs}"):
+    with mlflow.start_run(run_name=f"{args.architecture}_lr{args.lr}_ep{args.epochs}") as run:
         # Log params
         mlflow.log_params({
             "crop": args.crop,
@@ -124,6 +129,19 @@ def main(args):
         torch.save(model.state_dict(), "model_state_dict.pth")
         mlflow.log_artifact("model_state_dict.pth")
         print(f"Run complete | test_acc={test_acc:.4f} test_f1={test_f1:.4f}")
+
+    # Register model to MLflow Model Registry and transition to Staging
+    model_name = f"cropsight-{args.crop}"
+    model_uri = f"runs:/{run.info.run_id}/model"
+    client = MlflowClient()
+    mv = mlflow.register_model(model_uri=model_uri, name=model_name)
+    client.transition_model_version_stage(
+        name=model_name,
+        version=mv.version,
+        stage="Staging",
+        archive_existing_versions=False,
+    )
+    print(f"Registered '{model_name}' version {mv.version} → Staging")
 
 
 if __name__ == "__main__":
