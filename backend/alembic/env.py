@@ -8,9 +8,13 @@ from alembic import context
 from app.database import Base
 from app.models import user, company, prediction, join_request, refresh_token, retraining_job  # noqa
 
+from app.config import settings as app_settings  # noqa
+
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+config.set_main_option("sqlalchemy.url", app_settings.database_url)
 
 target_metadata = Base.metadata
 
