@@ -4,6 +4,10 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from app.main import app
 from app.database import Base, get_db
+from uuid import uuid4
+from app.models.user import User
+from app.core.security import hash_password
+
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
@@ -34,3 +38,36 @@ async def client():
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
         yield ac
+
+@pytest_asyncio.fixture
+async def super_admin_token(client):
+    async with TestSessionLocal() as db:
+        # Evitar duplicado si el fixture corre varias veces
+        from sqlalchemy import select
+        result = await db.execute(select(User).where(User.email == "superadmin@test.com"))
+        if not result.scalar_one_or_none():
+            admin = User(
+                id=uuid4(),
+                name="Super Admin",
+                email="superadmin@test.com",
+                role="super_admin",
+                is_active=True,
+                password_hash=hash_password("SecurePass123!"),
+            )
+            db.add(admin)
+            await db.commit()
+
+    resp = await client.post("/api/v1/auth/login", json={
+        "email": "superadmin@test.com",
+        "password": "SecurePass123!"
+    })
+    return resp.json()["access_token"]
+
+
+@pytest_asyncio.fixture
+async def super_admin_id(client, super_admin_token):
+    resp = await client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {super_admin_token}"}
+    )
+    return resp.json()["id"]
