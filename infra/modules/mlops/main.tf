@@ -143,3 +143,15 @@ resource "aws_instance" "mlflow" {
     Name = "cropsight-${var.env}-mlflow"
   }
 }
+
+resource "aws_ssm_parameter" "mlflow_url" {
+  name        = "/cropsight/${var.env}/mlflow/url"
+  description = "MLflow tracking server URL for ${var.env}"
+  type        = "String"
+  value       = "http://${aws_instance.mlflow.private_dns}:5000"
+  overwrite   = true
+
+  tags = {
+    Name = "cropsight-${var.env}-mlflow-url"
+  }
+}

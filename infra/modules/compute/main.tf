@@ -23,6 +23,21 @@ data "aws_ami" "al2023" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
+data "aws_iam_policy_document" "ec2_ssm_access" {
+  statement {
+    sid     = "AllowReadRuntimeParameters"
+    effect  = "Allow"
+    actions = ["ssm:GetParameter"]
+
+    resources = [
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.db_parameter_name}",
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.mlflow_parameter_name}",
+    ]
+  }
+}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # SECURITY GROUPS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -269,6 +284,12 @@ resource "aws_iam_role_policy" "ec2_s3" {
   policy = data.aws_iam_policy_document.ec2_s3_access.json
 }
 
+resource "aws_iam_role_policy" "ec2_ssm" {
+  name   = "cropsight-${var.env}-ec2-ssm-policy"
+  role   = aws_iam_role.ec2.id
+  policy = data.aws_iam_policy_document.ec2_ssm_access.json
+}
+
 # SSM access so you can connect without SSH keys
 resource "aws_iam_role_policy_attachment" "ssm" {
   role       = aws_iam_role.ec2.name
@@ -278,6 +299,11 @@ resource "aws_iam_role_policy_attachment" "ssm" {
 resource "aws_iam_role_policy_attachment" "cloudwatch" {
   role       = aws_iam_role.ec2.name
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "ecr_read_only" {
+  role       = aws_iam_role.ec2.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
 resource "aws_iam_instance_profile" "ec2" {
@@ -300,7 +326,11 @@ exec > /var/log/user-data.log 2>&1
 
 # System updates
 dnf update -y
-dnf install -y python3.11 python3.11-pip git amazon-cloudwatch-agent
+dnf install -y python3.11 python3.11-pip docker awscli amazon-cloudwatch-agent
+
+# Docker must be up before the backend container can start
+systemctl enable docker
+systemctl start docker
 
 # Configurar CloudWatch Agent
 cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWA'
@@ -329,46 +359,71 @@ CWA
 alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 python3 -m pip install --upgrade pip
 
-# Clone repo
-cd /opt
-git clone https://github.com/RobertoNav/CropSight.git app
-cd app
+# Create backend environment file for the container
+mkdir -p /opt/cropsight
+fetch_ssm_parameter() {
+  local parameter_name="$1"
+  local parameter_value=""
 
-# Instalar dependencias
-python3 -m pip install -r backend/requirements.txt
+  until parameter_value=$(aws ssm get-parameter \
+    --name "$parameter_name" \
+    --query "Parameter.Value" \
+    --output text \
+    --region "${var.aws_region}" 2>/dev/null); do
+    sleep 10
+  done
 
-# Crear .env
-sudo cat > /opt/app/backend/.env << 'ENVFILE'
-DATABASE_URL=postgresql+asyncpg://cropsight_admin:CropSight2024Dev@cropsight-dev-rds.cidooy88q03l.us-east-1.rds.amazonaws.com:5432/cropsight
+  echo "$parameter_value"
+}
+
+DATABASE_URL=$(fetch_ssm_parameter "${var.db_parameter_name}")
+MLFLOW_TRACKING_URI=$(fetch_ssm_parameter "${var.mlflow_parameter_name}")
+
+cat > /opt/cropsight/backend.env << ENVFILE
+DATABASE_URL=$${DATABASE_URL}
 SECRET_KEY=fe3e4292f8311a93b297cf42b32146514a6b5f407170bb2cdf138e6e167fa588
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
-AWS_REGION=us-east-1
-S3_BUCKET_IMAGES=cropsight-dev-imgs
-S3_BUCKET_MODELS=cropsight-dev-mlflow
+AWS_REGION=${var.aws_region}
+S3_BUCKET_IMAGES=cropsight-${var.env}-imgs
+S3_BUCKET_MODELS=cropsight-${var.env}-mlflow
 LAMBDA_INFERENCE_URL=http://localhost
-MLFLOW_TRACKING_URI=${var.mlflow_url}
+MLFLOW_TRACKING_URI=$${MLFLOW_TRACKING_URI}
 MLFLOW_MODEL_NAME=cropsight-classifier
 GITHUB_TOKEN=${var.github_token}
 GITHUB_REPO=RobertoNav/CropSight
-GITHUB_WORKFLOW_ID=retraining.yml
-ENVIRONMENT=dev
+GITHUB_WORKFLOW_ID=retrain.yml
+ENVIRONMENT=${var.env}
 ENVFILE
 
+# Authenticate Docker to the ECR repository and pull the image used by this environment
+ECR_REGISTRY=$(echo "${var.ecr_repository_url}" | cut -d/ -f1)
+if [ "${var.env}" = "prod" ]; then
+  IMAGE_TAG="latest"
+else
+  IMAGE_TAG="${var.env}"
+fi
+IMAGE_URI="${var.ecr_repository_url}:${IMAGE_TAG}"
+
+aws ecr get-login-password --region "${var.aws_region}" \
+  | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+docker pull "${IMAGE_URI}"
+
 # Systemd service
-cat > /etc/systemd/system/cropsight.service << 'SERVICE'
+cat > /etc/systemd/system/cropsight.service << SERVICE
 [Unit]
-Description=CropSight FastAPI Backend
-After=network.target
+Description=CropSight FastAPI Backend Container
+After=network.target docker.service
+Requires=docker.service
 
 [Service]
-User=ec2-user
-WorkingDirectory=/opt/app/backend
-ExecStart=/usr/bin/python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=5
-Environment=ENV=${var.env}
+TimeoutStartSec=0
+ExecStartPre=-/usr/bin/docker rm -f cropsight-backend
+ExecStart=/usr/bin/docker run --name cropsight-backend --env-file /opt/cropsight/backend.env -p 8000:8000 ${IMAGE_URI}
+ExecStop=/usr/bin/docker stop cropsight-backend
 
 [Install]
 WantedBy=multi-user.target

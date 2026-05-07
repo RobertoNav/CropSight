@@ -63,3 +63,15 @@ resource "aws_db_instance" "main" {
     Name = "cropsight-${var.env}-rds"
   }
 }
+
+resource "aws_ssm_parameter" "database_url" {
+  name        = "/cropsight/${var.env}/database/url"
+  description = "Database URL for ${var.env}"
+  type        = "String"
+  value       = "postgresql+asyncpg://${var.db_username}:${var.db_password}@${aws_db_instance.main.address}:5432/${aws_db_instance.main.db_name}"
+  overwrite   = true
+
+  tags = {
+    Name = "cropsight-${var.env}-database-url"
+  }
+}
