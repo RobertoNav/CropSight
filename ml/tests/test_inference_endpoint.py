@@ -52,7 +52,7 @@ def client():
         inst.get_latest_versions.return_value = [mock_version]
         inst.get_run.return_value = mock_run
 
-        from src.inference.main import app, MODELS, CLASS_NAMES
+        from cropsight.CropSight.merged_ml.src.inference.main import app, MODELS, CLASS_NAMES
         with TestClient(app) as c:
             yield c
 
@@ -98,7 +98,7 @@ def test_predict_unknown_crop_returns_400(client):
 
 
 def test_predict_model_not_loaded_returns_503(client):
-    from src.inference.main import MODELS
+    from cropsight.CropSight.merged_ml.src.inference.main import MODELS
     tomato_model = MODELS.pop("tomato")          # simulate failed load
     try:
         r = client.post(
@@ -114,7 +114,7 @@ def test_predict_model_not_loaded_returns_503(client):
 # ── class names loaded from MLflow params ─────────────────────────────────────
 
 def test_class_names_populated_from_mlflow_params(client):
-    from src.inference.main import CLASS_NAMES
+    from cropsight.CropSight.merged_ml.src.inference.main import CLASS_NAMES
     for crop in ["tomato", "potato", "corn", "grape"]:
         assert CLASS_NAMES.get(crop) == ["Healthy", "Disease"], \
             f"CLASS_NAMES not populated for {crop}"

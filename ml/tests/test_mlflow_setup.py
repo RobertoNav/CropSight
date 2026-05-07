@@ -21,7 +21,7 @@ def local_tracking_uri(tmp_path, monkeypatch):
 
 def _load_setup(local_tracking_uri):
     """Reload the module so it picks up the patched env vars."""
-    import scripts.setup_mlflow as setup
+    import cropsight.CropSight.merged_ml.scripts.setup_mlflow as setup
     importlib.reload(setup)
     return setup
 

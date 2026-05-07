@@ -4,7 +4,7 @@ import numpy as np
 
 
 def test_inference_transform_output_shape():
-    from src.preprocessing.transforms import get_inference_transforms
+    from cropsight.CropSight.merged_ml.src.preprocessing.transforms import get_inference_transforms
     transform = get_inference_transforms()
     dummy_image = Image.fromarray(np.uint8(np.random.rand(256, 256, 3) * 255))
     tensor = transform(dummy_image)
@@ -12,7 +12,7 @@ def test_inference_transform_output_shape():
 
 
 def test_build_model_output_shape():
-    from src.training.model import build_model
+    from cropsight.CropSight.merged_ml.src.training.model import build_model
     model = build_model(num_classes=5)
     model.eval()
     dummy_input = torch.randn(2, 3, 224, 224)

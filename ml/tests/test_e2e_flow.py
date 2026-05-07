@@ -16,7 +16,7 @@ from PIL import Image
 @pytest.fixture(autouse=True)
 def redirect_output(tmp_path, monkeypatch):
     """Redirect prediction/feedback output to tmp_path so tests don't write to ml/data/."""
-    import scripts.e2e_flow as flow
+    import cropsight.CropSight.merged_ml.scripts.e2e_flow as flow
     monkeypatch.setattr(flow, "OUT_PREDICTIONS", tmp_path / "predictions")
     monkeypatch.setattr(flow, "OUT_FEEDBACK", tmp_path / "feedback")
     (tmp_path / "predictions").mkdir()
@@ -44,7 +44,7 @@ def _mock_client(predicted_class: str = "Tomato_Healthy", confidence: float = 0.
 # ── make_test_image ───────────────────────────────────────────────────────────
 
 def test_make_test_image_is_224x224_jpeg():
-    from scripts.e2e_flow import make_test_image
+    from cropsight.CropSight.merged_ml.scripts.e2e_flow import make_test_image
     data = make_test_image("tomato")
     img = Image.open(io.BytesIO(data))
     assert img.size == (224, 224)
@@ -53,7 +53,7 @@ def test_make_test_image_is_224x224_jpeg():
 
 @pytest.mark.parametrize("crop", ["tomato", "potato", "corn", "grape"])
 def test_make_test_image_works_for_all_crops(crop):
-    from scripts.e2e_flow import make_test_image
+    from cropsight.CropSight.merged_ml.scripts.e2e_flow import make_test_image
     data = make_test_image(crop)
     assert len(data) > 0
     img = Image.open(io.BytesIO(data))
@@ -63,7 +63,7 @@ def test_make_test_image_works_for_all_crops(crop):
 # ── run_crop ──────────────────────────────────────────────────────────────────
 
 def test_run_crop_creates_prediction_file():
-    from scripts.e2e_flow import run_crop, OUT_PREDICTIONS
+    from cropsight.CropSight.merged_ml.scripts.e2e_flow import run_crop, OUT_PREDICTIONS
     client = _mock_client()
 
     run_crop(client, "tomato")
@@ -77,7 +77,7 @@ def test_run_crop_creates_prediction_file():
 
 
 def test_run_crop_creates_feedback_file():
-    from scripts.e2e_flow import run_crop, OUT_FEEDBACK
+    from cropsight.CropSight.merged_ml.scripts.e2e_flow import run_crop, OUT_FEEDBACK
     client = _mock_client()
 
     run_crop(client, "tomato")
@@ -91,7 +91,7 @@ def test_run_crop_creates_feedback_file():
 
 
 def test_run_crop_embeds_feedback_in_prediction():
-    from scripts.e2e_flow import run_crop, OUT_PREDICTIONS
+    from cropsight.CropSight.merged_ml.scripts.e2e_flow import run_crop, OUT_PREDICTIONS
     client = _mock_client()
 
     record = run_crop(client, "tomato")
@@ -103,7 +103,7 @@ def test_run_crop_embeds_feedback_in_prediction():
 
 
 def test_run_crop_posts_to_correct_url(monkeypatch):
-    from scripts.e2e_flow import run_crop, INFERENCE_URL
+    from cropsight.CropSight.merged_ml.scripts.e2e_flow import run_crop, INFERENCE_URL
     client = _mock_client()
 
     run_crop(client, "potato")
@@ -115,7 +115,7 @@ def test_run_crop_posts_to_correct_url(monkeypatch):
 
 
 def test_run_crop_raises_on_non_200():
-    from scripts.e2e_flow import run_crop
+    from cropsight.CropSight.merged_ml.scripts.e2e_flow import run_crop
     mock_resp = MagicMock()
     mock_resp.status_code = 503
     mock_resp.text = "Service Unavailable"
@@ -130,7 +130,7 @@ def test_run_crop_raises_on_non_200():
 
 @pytest.mark.parametrize("crop", ["tomato", "potato", "corn", "grape"])
 def test_full_flow_for_every_crop(crop):
-    from scripts.e2e_flow import run_crop, OUT_PREDICTIONS, OUT_FEEDBACK
+    from cropsight.CropSight.merged_ml.scripts.e2e_flow import run_crop, OUT_PREDICTIONS, OUT_FEEDBACK
 
     mock_resp = MagicMock()
     mock_resp.status_code = 200
