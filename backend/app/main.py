@@ -1,5 +1,5 @@
 import asyncio
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -15,17 +15,31 @@ from app.core.exceptions import (
     generic_exception_handler,
 )
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
+from app.database import AsyncSessionLocal
 from app.routers import auth, users, companies, join_requests, predictions
 from app.routers.admin import models as admin_models, retraining, metrics as admin_metrics
+from app.services.refresh_token_cleanup import (
+    delete_expired_refresh_tokens,
+    run_refresh_token_cleanup,
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     print("🌱 CropSight Backend iniciando...")
-    yield
-    # Shutdown
-    print("🛑 CropSight Backend cerrando...")
+    async with AsyncSessionLocal() as db:
+        await delete_expired_refresh_tokens(db)
+
+    cleanup_task = asyncio.create_task(run_refresh_token_cleanup())
+    try:
+        yield
+    finally:
+        cleanup_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await cleanup_task
+        # Shutdown
+        print("🛑 CropSight Backend cerrando...")
 
 
 app = FastAPI(

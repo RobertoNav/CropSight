@@ -39,6 +39,13 @@ async def client():
     ) as ac:
         yield ac
 
+
+@pytest_asyncio.fixture
+async def db_session():
+    async with TestSessionLocal() as session:
+        yield session
+
+
 @pytest_asyncio.fixture
 async def super_admin_token(client):
     async with TestSessionLocal() as db:
