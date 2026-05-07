@@ -46,6 +46,13 @@ async def db_session():
         yield session
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limiter_storage():
+    app.state.limiter._storage.reset()
+    yield
+    app.state.limiter._storage.reset()
+
+
 @pytest_asyncio.fixture
 async def super_admin_token(client):
     async with TestSessionLocal() as db:
