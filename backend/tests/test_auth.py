@@ -51,6 +51,21 @@ async def test_login_wrong_password(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_forgot_password_rate_limit(client: AsyncClient):
+    for _ in range(5):
+        response = await client.post("/api/v1/auth/forgot-password", json={
+            "email": "ratelimit@example.com",
+        })
+        assert response.status_code == 204
+
+    blocked = await client.post("/api/v1/auth/forgot-password", json={
+        "email": "ratelimit@example.com",
+    })
+    assert blocked.status_code == 429
+    assert blocked.json()["error"]["code"] == "TOO_MANY_REQUESTS"
+
+
+@pytest.mark.asyncio
 async def test_health(client: AsyncClient):
     response = await client.get("/api/v1/health")
     assert response.status_code == 200

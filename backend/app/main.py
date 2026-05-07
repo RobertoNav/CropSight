@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 import app.models  # noqa: F401 — registers all ORM classes before any relationship is resolved
 
@@ -12,6 +14,7 @@ from app.core.exceptions import (
     validation_exception_handler,
     generic_exception_handler,
 )
+from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.routers import auth, users, companies, join_requests, predictions
 from app.routers.admin import models as admin_models, retraining, metrics as admin_metrics
 
@@ -50,7 +53,10 @@ app.add_middleware(
 # ── Exception handlers ────────────────────────────────────────────────────────
 app.add_exception_handler(CropSightException, cropsight_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 PREFIX = "/api/v1"
