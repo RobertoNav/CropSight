@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Request
+from app.core.rate_limit import limiter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,10 +21,19 @@ from app.schemas.auth import (
 from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+AUTH_RATE_LIMITS = {
+    "register": "3/minute",
+    "login": "5/minute",
+    "refresh": "10/minute",
+    "logout": "10/minute",
+    "forgot_password": "3/hour",
+    "reset_password": "5/hour",
+}
 
 
 @router.post("/register", response_model=AuthResponse, status_code=201)
-async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(AUTH_RATE_LIMITS["register"])
+async def register(request: Request, payload: RegisterRequest, db: AsyncSession = Depends(get_db)):
     # Verificar email único
     existing = await db.execute(select(User).where(User.email == payload.email, User.deleted_at.is_(None)))
     if existing.scalar_one_or_none():
@@ -49,7 +59,8 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(AUTH_RATE_LIMITS["login"])
+async def login(request: Request, payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == payload.email, User.deleted_at.is_(None)))
     user = result.scalar_one_or_none()
 
@@ -68,7 +79,8 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=RefreshResponse)
-async def refresh_token(payload: RefreshRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(AUTH_RATE_LIMITS["refresh"])
+async def refresh_token(request: Request, payload: RefreshRequest, db: AsyncSession = Depends(get_db)):
     token_hash = hash_refresh_token(payload.refresh_token)
     result = await db.execute(
         select(RefreshToken).where(RefreshToken.token_hash == token_hash)
@@ -91,7 +103,8 @@ async def refresh_token(payload: RefreshRequest, db: AsyncSession = Depends(get_
 
 
 @router.post("/logout", status_code=204)
-async def logout(payload: LogoutRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(AUTH_RATE_LIMITS["logout"])
+async def logout(request: Request, payload: LogoutRequest, db: AsyncSession = Depends(get_db)):
     token_hash = hash_refresh_token(payload.refresh_token)
     result = await db.execute(
         select(RefreshToken).where(RefreshToken.token_hash == token_hash)
@@ -103,7 +116,8 @@ async def logout(payload: LogoutRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/forgot-password", status_code=204)
-async def forgot_password(payload: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(AUTH_RATE_LIMITS["forgot_password"])
+async def forgot_password(request: Request, payload: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == payload.email, User.deleted_at.is_(None)))
     user = result.scalar_one_or_none()
     if user:
@@ -114,7 +128,8 @@ async def forgot_password(payload: ForgotPasswordRequest, db: AsyncSession = Dep
 
 
 @router.post("/reset-password", status_code=204)
-async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(AUTH_RATE_LIMITS["reset_password"])
+async def reset_password(request: Request, payload: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
     try:
         token_data = decode_token(payload.token)
     except Exception:
