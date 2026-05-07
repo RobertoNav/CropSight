@@ -29,6 +29,8 @@ module "compute" {
   imgs_bucket_arn      = module.storage.imgs_bucket_arn
   mlflow_bucket_arn    = module.storage.mlflow_bucket_arn
   bkp_bucket_arn       = module.storage.bkp_bucket_arn
+  mlflow_url  = module.mlops.mlflow_url
+  github_token  = var.github_token
 }
 
 module "database" {

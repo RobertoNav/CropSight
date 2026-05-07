@@ -56,3 +56,14 @@ variable "bkp_bucket_arn" {
   description = "ARN of the backup S3 bucket"
   type        = string
 }
+
+variable "mlflow_url" {
+  description = "MLflow tracking server URL"
+  type        = string
+}
+
+variable "github_token" {
+  description = "GitHub Personal Access Token"
+  type        = string
+  sensitive   = true
+}

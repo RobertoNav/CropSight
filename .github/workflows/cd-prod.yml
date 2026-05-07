@@ -47,6 +47,7 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         env:
           TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+          TF_VAR_github_token: ${{ secrets.TF_VAR_GITHUB_TOKEN }}
         run: |
           terraform plan \
             -var-file=environments/prod.tfvars \
@@ -102,6 +103,7 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         env:
           TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+          TF_VAR_github_token: ${{ secrets.TF_VAR_GITHUB_TOKEN }}
         run: |
           terraform apply \
             -var-file=environments/dev.tfvars \
@@ -146,6 +148,7 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         env:
           TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+          TF_VAR_github_token: ${{ secrets.TF_VAR_GITHUB_TOKEN }}
         run: |
           terraform apply \
             -var-file=environments/prod.tfvars \
@@ -180,6 +183,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         env:
           TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+          TF_VAR_github_token: ${{ secrets.TF_VAR_GITHUB_TOKEN }}
           PREVIOUS_SHA: ${{ github.event.before }}
         run: |
           echo "Smoke tests failed. Rolling back to commit ${PREVIOUS_SHA}."
