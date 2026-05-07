@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSON
 from app.database import Base
 
 
@@ -21,7 +21,7 @@ class Prediction(Base):
     image_url: Mapped[str] = mapped_column(String(500), nullable=False)
     label: Mapped[str] = mapped_column(String(100), nullable=False)
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
-    class_probabilities: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    class_probabilities: Mapped[dict] = mapped_column(JSON, nullable=False)
     model_version: Mapped[str] = mapped_column(String(20), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
