@@ -35,6 +35,11 @@ class ForbiddenException(CropSightException):
         super().__init__("FORBIDDEN", message, 403)
 
 
+class BadRequestException(CropSightException):
+    def __init__(self, message: str = "La solicitud es inválida."):
+        super().__init__("BAD_REQUEST", message, 400)
+
+
 class ConflictException(CropSightException):
     def __init__(self, message: str = "El recurso ya existe."):
         super().__init__("CONFLICT", message, 409)
