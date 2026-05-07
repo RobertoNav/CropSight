@@ -103,3 +103,9 @@ variable "lifecycle_expiration_days" {
   type        = number
   default     = 90
 }
+
+variable "github_token" {
+  description = "GitHub Personal Access Token"
+  type        = string
+  sensitive   = true
+}

@@ -337,6 +337,25 @@ cd app
 # Instalar dependencias
 python3 -m pip install -r backend/requirements.txt
 
+# Crear .env
+sudo cat > /opt/app/backend/.env << 'ENVFILE'
+DATABASE_URL=postgresql+asyncpg://cropsight_admin:CropSight2024Dev@cropsight-dev-rds.cidooy88q03l.us-east-1.rds.amazonaws.com:5432/cropsight
+SECRET_KEY=fe3e4292f8311a93b297cf42b32146514a6b5f407170bb2cdf138e6e167fa588
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=15
+REFRESH_TOKEN_EXPIRE_DAYS=7
+AWS_REGION=us-east-1
+S3_BUCKET_IMAGES=cropsight-dev-imgs
+S3_BUCKET_MODELS=cropsight-dev-mlflow
+LAMBDA_INFERENCE_URL=http://localhost
+MLFLOW_TRACKING_URI=${var.mlflow_url}
+MLFLOW_MODEL_NAME=cropsight-classifier
+GITHUB_TOKEN=${var.github_token}
+GITHUB_REPO=RobertoNav/CropSight
+GITHUB_WORKFLOW_ID=retraining.yml
+ENVIRONMENT=dev
+ENVFILE
+
 # Systemd service
 cat > /etc/systemd/system/cropsight.service << 'SERVICE'
 [Unit]
@@ -526,5 +545,22 @@ resource "aws_autoscaling_policy" "cpu_tracking" {
       predefined_metric_type = "ASGAverageCPUUtilization"
     }
     target_value = 60.0
+  }
+}
+
+resource "aws_acm_certificate" "cropsight" {
+  domain_name       = "cropsight.io"
+  validation_method = "DNS"
+
+  subject_alternative_names = [
+    "*.cropsight.io"
+  ]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Name = "cropsight-${var.env}-cert"
   }
 }
