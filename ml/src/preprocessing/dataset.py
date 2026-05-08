@@ -24,8 +24,8 @@ def build_dataloaders(data_dir: str, batch_size: int = 32, val_split: float = 0.
     val_ds.dataset.transform  = get_val_transforms()
     test_ds.dataset.transform = get_val_transforms()
 
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=4)
-    val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
-    test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=0)
+    val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=0)
+    test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, num_workers=0)
 
     return train_loader, val_loader, test_loader, class_names
