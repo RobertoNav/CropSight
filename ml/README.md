@@ -55,7 +55,7 @@ ml/
 | Tomate | `cropsight-tomato` | `cropsight-tomato` | 10 |
 | Papa   | `cropsight-potato` | `cropsight-potato` | 3  |
 | Maíz   | `cropsight-corn`   | `cropsight-corn`   | 4  |
-| Vid    | `cropsight-grape`  | `cropsight-grape`  | 4  |
+| Pepper    | `cropsight-pepper`  | `cropsight-pepper`  | 4  |
 
 ---
 
@@ -290,4 +290,5 @@ hiperparámetros opcionales. El workflow descarga `data/processed/<crop>` de S3,
 ejecuta `src.training.train`, y deja el modelo registrado en Staging vía
 `src.registry.register`. La promoción a Production se hace manualmente desde
 el admin dashboard.
+
 
