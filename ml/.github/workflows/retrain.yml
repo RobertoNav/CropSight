@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       crop:
-        description: "Crop to retrain (tomato / potato / corn / grape)"
+        description: "Crop to retrain (tomato / potato / corn / pepper)"
         required: true
         type: choice
-        options: [tomato, potato, corn, grape]
+        options: [tomato, potato, corn, pepper]
       epochs:
         description: "Number of training epochs"
         required: false
@@ -40,7 +40,7 @@ jobs:
 
       - name: Download processed data from S3
         run: |
-          aws s3 sync s3://${{ secrets.S3_BUCKET }}/data/processed/${{ github.event.inputs.crop }} \
+          aws s3 sync s3://cropsight-dataset-ml/processed/${{ github.event.inputs.crop }} \
             data/processed/${{ github.event.inputs.crop }}
 
       - name: Run training
