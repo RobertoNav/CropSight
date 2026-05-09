@@ -16,8 +16,11 @@ build/
 .env.local
 .env.production
 
-# Base de datos de pruebas
-test.db
+# Base de datos local
+*.db
+
+# Certificado SSL RDS (descargar con: curl -O https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem)
+global-bundle.pem
 
 # IDE
 .vscode/

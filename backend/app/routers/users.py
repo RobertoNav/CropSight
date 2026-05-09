@@ -2,6 +2,7 @@ from uuid import UUID
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, func
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -84,7 +85,7 @@ async def update_user_status(
     if user_id == current_user.id:
         raise ForbiddenException("No puedes desactivarte a ti mismo.")
 
-    result = await db.execute(select(User).where(User.id == user_id))
+    result = await db.execute(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
     user = result.scalar_one_or_none()
     if not user:
         raise NotFoundException("Usuario no encontrado.")
@@ -95,3 +96,30 @@ async def update_user_status(
     await db.commit()
     await db.refresh(user)
     return user
+
+@router.delete("/{user_id}")
+async def delete_user(
+    user_id: UUID,
+    current_user: User = Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if user_id == current_user.id:
+        raise ForbiddenException("No puedes eliminarte a ti mismo.")
+
+    result = await db.execute(
+        select(User).where(User.id == user_id, User.deleted_at.is_(None))
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise NotFoundException("Usuario no encontrado.")
+
+    if user.role == "super_admin":
+        raise ForbiddenException("No puedes eliminar a otro super admin.")
+
+    # ✅ SOFT DELETE
+    user.deleted_at = datetime.now(timezone.utc)
+
+    await db.commit()
+
+    return {"message": "Usuario eliminado correctamente"}

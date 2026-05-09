@@ -1,38 +1,68 @@
 # CropSight — Backend
 
-API REST construida con **FastAPI** + **PostgreSQL** + **SQLAlchemy async**.
+API REST construida con **FastAPI** + **PostgreSQL** (RDS) + **SQLAlchemy async**.
 
 ## Requisitos
 
 - Python 3.11+
-- PostgreSQL 15+
-- AWS CLI configurado (para S3)
+- Acceso a la instancia RDS `cropsight-dev` en AWS (us-east-2)
+- Credenciales de la base de datos (solicitar al PM)
 
 ## Setup local
 
 ```bash
-# 1. Clonar y entrar al directorio
+# 1. Entrar al directorio
 cd backend
 
 # 2. Crear entorno virtual
 python -m venv .venv
 source .venv/bin/activate  # macOS/Linux
+.venv\Scripts\activate     # Windows
 
 # 3. Instalar dependencias
 pip install -r requirements.txt
 
-# 4. Configurar variables de entorno
+# 4. Descargar certificado SSL de RDS
+curl -O https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+
+# 5. Configurar variables de entorno
 cp .env.example .env
-# Editar .env con tus valores
+```
 
-# 5. Crear base de datos PostgreSQL
-createdb cropsight
+Editar `.env` con los datos de conexión a RDS:
 
-# 6. Correr migraciones
+```env
+DATABASE_URL=postgresql+asyncpg://cropsight:<PASSWORD>@cropsight-dev.chumg2aaac61.us-east-2.rds.amazonaws.com:5432/cropsight
+```
+
+```bash
+# 6. Aplicar migraciones
 alembic upgrade head
 
 # 7. Iniciar servidor
-uvicorn app.main:app --reload
+python -m uvicorn app.main:app --reload
+```
+
+## Verificar que funciona
+
+```bash
+# Health check
+curl http://localhost:8000/api/v1/health
+# → {"status": "ok", "version": "1.0.0"}
+
+# Registro de usuario
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Tu Nombre","email":"tu@email.com","password":"SecurePass123!"}'
+# → 201 con access_token, refresh_token y datos del usuario
+```
+
+## Verificar tablas en RDS
+
+```bash
+PGPASSWORD=<PASSWORD> psql "host=cropsight-dev.chumg2aaac61.us-east-2.rds.amazonaws.com \
+  port=5432 dbname=cropsight user=cropsight \
+  sslmode=verify-full sslrootcert=./global-bundle.pem" -c "\dt"
 ```
 
 ## Documentación de API
@@ -53,7 +83,7 @@ pytest tests/ -v
 app/
 ├── main.py          # Entrypoint
 ├── config.py        # Variables de entorno
-├── database.py      # Engine SQLAlchemy
+├── database.py      # Engine SQLAlchemy con SSL para RDS
 ├── dependencies.py  # Guards de auth y rol
 ├── core/            # Security, exceptions
 ├── models/          # Tablas SQLAlchemy

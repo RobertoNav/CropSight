@@ -1,13 +1,25 @@
+import ssl
+from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from app.config import settings
 
+is_sqlite = "sqlite" in settings.database_url
+
+def _connect_args():
+    if is_sqlite:
+        return {"check_same_thread": False}
+    cert = Path(__file__).resolve().parent.parent / "global-bundle.pem"
+    if cert.exists():
+        ctx = ssl.create_default_context(cafile=str(cert))
+        return {"ssl": ctx}
+    return {"ssl": True}
+
 engine = create_async_engine(
     settings.database_url,
     echo=settings.environment == "development",
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
+    connect_args=_connect_args(),
+    **({} if is_sqlite else {"pool_pre_ping": True, "pool_size": 10, "max_overflow": 20}),
 )
 
 AsyncSessionLocal = async_sessionmaker(

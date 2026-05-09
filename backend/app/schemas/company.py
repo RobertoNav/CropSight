@@ -34,6 +34,7 @@ class CompanySearchResult(BaseModel):
     id: UUID
     name: str
     sector: Optional[str] = None
+    logo_url: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
