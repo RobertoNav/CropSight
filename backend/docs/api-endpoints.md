@@ -10,9 +10,9 @@
 
 | Estado | Cantidad |
 |---|---|
-| ✅ Implementado y probado | 32 |
-| ⚠️ Implementado (requiere servicio externo) | 2 |
-| ⏳ Pendiente | 3 |
+| ✅ Implementado y probado | 33 |
+| ⚠️ Implementado (requiere servicio externo) | 3 |
+| ⏳ Pendiente | 1 |
 | **Total** | **37** |
 
 ---
@@ -437,6 +437,64 @@ curl -X PUT http://localhost:8000/api/v1/companies/<uuid>/requests/<req_uuid> \
 
 ## Predictions
 
+### ⚠️ `POST /predictions/` 🔒
+Sube una imagen a S3, llama al servicio de inferencia y guarda el resultado.
+
+> **Requiere:** S3 bucket `cropsight-dev-imgs` (configurado ✅) + servicio de inferencia en `LAMBDA_INFERENCE_URL` (pendiente de despliegue por equipo ML).
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/predictions/?crop=tomato" \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@foto_cultivo.jpg"
+```
+
+| Parámetro | Tipo | Descripción |
+|---|---|---|
+| `crop` | query string | Cultivo: `tomato` · `potato` · `corn` · `pepper` |
+| `file` | form-data | Imagen JPG o PNG, máx 5 MB |
+
+**Respuesta `201`:**
+```json
+{
+  "id": "uuid",
+  "user_id": "uuid",
+  "company_id": null,
+  "image_url": "https://cropsight-dev-imgs.s3.us-east-1.amazonaws.com/...",
+  "label": "Tomato___Early_blight",
+  "confidence": 0.9423,
+  "class_probabilities": { "Tomato___Early_blight": 0.9423, "Tomato___healthy": 0.0577 },
+  "model_version": "3",
+  "feedback": null,
+  "created_at": "..."
+}
+```
+**Errores:** `413` imagen mayor a 5 MB · `415` formato no soportado (solo JPG/PNG) · `422` falta `crop` o `file` · `502` servicio de inferencia no disponible
+
+---
+
+### ✅ `GET /predictions/` 🔒
+Historial de predicciones con paginación. `super_admin` ve todas; los demás solo las propias.
+
+```bash
+curl "http://localhost:8000/api/v1/predictions/?page=1&limit=20" \
+  -H "Authorization: Bearer <token>"
+```
+
+| Query param | Tipo | Descripción |
+|---|---|---|
+| `page` | int ≥1 | default `1` |
+| `limit` | int 1–100 | default `20` |
+
+**Respuesta `200`:**
+```json
+{
+  "data": [{ "id":"uuid","label":"Tomato___Early_blight","confidence":0.94,"created_at":"...","feedback":null }],
+  "meta": { "total": 5, "page": 1, "limit": 20 }
+}
+```
+
+---
+
 ### ✅ `POST /predictions/{id}/feedback` 🔒
 Registra si una predicción fue correcta.
 
@@ -605,18 +663,6 @@ curl http://localhost:8000/api/v1/admin/metrics/drift \
 ---
 
 ## Pendientes
-
-### ⏳ `POST /predictions/` 🔒
-**Responsable:** GALINDO VILLEGAS, JAIME ENRIQUE  
-Envía imagen para inferencia y guarda resultado. Body: `multipart/form-data` con campo `image`.
-
----
-
-### ⏳ `GET /predictions/` 🔒
-**Responsable:** GALINDO VILLEGAS, JAIME ENRIQUE  
-Historial de predicciones del usuario autenticado con paginación.
-
----
 
 ### ⏳ `GET /admin/models/` 🔒 👑
 **Responsable:** ALONSO GONZALEZ, JUAN CARLOS  
