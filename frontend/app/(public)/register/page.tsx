@@ -2,61 +2,126 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+
 import { Logo } from '@/components/ui/Logo'
 
-export default function RegisterPage() {
-  const [showPass, setShowPass] = useState(false)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+import {
+  register,
+} from '@/services/auth.service'
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+import {
+  useAuth,
+} from '@/context/AuthContext'
+
+export default function RegisterPage() {
+  const { login } = useAuth()
+
+  const [showPass, setShowPass] =
+    useState(false)
+
+  const [error, setError] =
+    useState('')
+
+  const [loading, setLoading] =
+    useState(false)
+
+  /* ───────────────── SUBMIT ───────────────── */
+
+  async function handleSubmit(
+    e: React.FormEvent<HTMLFormElement>
+  ) {
     e.preventDefault()
 
     setError('')
 
-    const fd = new FormData(e.currentTarget)
+    const fd = new FormData(
+      e.currentTarget
+    )
 
-    const password = fd.get('password') as string
-    const confirm = fd.get('confirm') as string
+    const password = fd.get(
+      'password'
+    ) as string
+
+    const confirm = fd.get(
+      'confirm'
+    ) as string
+
+    /* VALIDATIONS */
 
     if (password !== confirm) {
-      setError('Passwords do not match.')
+      setError(
+        'Passwords do not match.'
+      )
+
       return
     }
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
+      setError(
+        'Password must be at least 8 characters.'
+      )
+
       return
     }
 
     setLoading(true)
 
     try {
-      const res = await fetch('/api/v1/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: fd.get('full_name'),
-          email: fd.get('email'),
+      const data =
+        await register({
+          name: fd.get(
+            'full_name'
+          ) as string,
+
+          email: fd.get(
+            'email'
+          ) as string,
+
           password,
-        }),
+        })
+
+      /*
+        guarda auth
+      */
+
+      login({
+        access_token:
+          data.access_token,
+
+        refresh_token:
+          data.refresh_token,
+
+        user: data.user,
       })
 
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || 'Could not create account')
+      /*
+        redirect según role
+      */
+
+      if (
+        data.user.role ===
+        'super_admin'
+      ) {
+        window.location.href =
+          '/admin'
+      } else if (
+        data.user.role ===
+        'company_admin'
+      ) {
+        window.location.href =
+          '/company'
+      } else {
+        window.location.href =
+          '/dashboard'
       }
-
-      const data = await res.json()
-
-      document.cookie = `access_token=${data.access_token}; path=/`
-      document.cookie = `refresh_token=${data.refresh_token}; path=/`
-
-      window.location.href = '/dashboard'
     } catch (err: any) {
-      setError(err.message || 'Something went wrong')
+      console.error(err)
+
+      setError(
+        err?.response?.data?.error
+          ?.message ||
+          'Something went wrong'
+      )
     } finally {
       setLoading(false)
     }
@@ -67,9 +132,13 @@ export default function RegisterPage() {
       <div className="auth-card">
         <Logo />
 
-        <h1 className="auth-title">Create your account</h1>
+        <h1 className="auth-title">
+          Create your account
+        </h1>
+
         <p className="auth-subtitle">
-          Start diagnosing crop diseases today
+          Start diagnosing crop
+          diseases today
         </p>
 
         {error && (
@@ -79,6 +148,8 @@ export default function RegisterPage() {
         )}
 
         <form onSubmit={handleSubmit}>
+          {/* FULL NAME */}
+
           <div className="form-group">
             <label className="form-label">
               Full name
@@ -90,6 +161,8 @@ export default function RegisterPage() {
               required
             />
           </div>
+
+          {/* EMAIL */}
 
           <div className="form-group">
             <label className="form-label">
@@ -104,6 +177,8 @@ export default function RegisterPage() {
             />
           </div>
 
+          {/* PASSWORD */}
+
           <div className="form-group">
             <label className="form-label">
               Password
@@ -112,7 +187,11 @@ export default function RegisterPage() {
             <div className="input-wrapper">
               <input
                 className="form-input"
-                type={showPass ? 'text' : 'password'}
+                type={
+                  showPass
+                    ? 'text'
+                    : 'password'
+                }
                 name="password"
                 required
               />
@@ -120,12 +199,18 @@ export default function RegisterPage() {
               <button
                 type="button"
                 className="input-toggle"
-                onClick={() => setShowPass(!showPass)}
+                onClick={() =>
+                  setShowPass(
+                    !showPass
+                  )
+                }
               >
                 👁
               </button>
             </div>
           </div>
+
+          {/* CONFIRM */}
 
           <div className="form-group">
             <label className="form-label">
@@ -140,16 +225,22 @@ export default function RegisterPage() {
             />
           </div>
 
+          {/* SUBMIT */}
+
           <button
             className="btn btn--primary"
             disabled={loading}
             type="submit"
           >
-            {loading ? 'Creating account...' : 'Create account'}
+            {loading
+              ? 'Creating account...'
+              : 'Create account'}
           </button>
         </form>
 
-        <div className="divider">or</div>
+        <div className="divider">
+          or
+        </div>
 
         <Link
           href="/register/company"
@@ -160,7 +251,10 @@ export default function RegisterPage() {
 
         <p className="auth-footer">
           Already have an account?{' '}
-          <Link href="/login" className="link">
+          <Link
+            href="/login"
+            className="link"
+          >
             Sign in
           </Link>
         </p>
