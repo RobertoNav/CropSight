@@ -1,6 +1,9 @@
-﻿import '../styles/globals.css'
-import { AppShell } from "@/components/layout/AppShell";
+﻿import "../styles/globals.css";
+
 import "@tabler/icons-webfont/dist/tabler-icons.min.css";
+
+import { AppShell } from "@/components/layout/AppShell";
+import { AuthProvider } from "@/context/AuthContext";
 
 export default function RootLayout({
   children,
@@ -10,9 +13,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AppShell>
-          {children}
-        </AppShell>
+        <AuthProvider>
+          <AppShell>
+            {children}
+          </AppShell>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,8 +1,14 @@
-// components/admin/AdminMetrics.tsx
-
 "use client";
 
 import { MetricCard } from "@/components/ui/MetricCard";
+
+/*
+  Mocked data aligned with API contract:
+
+  /admin/metrics
+  /admin/models/drift
+  /admin/activity
+*/
 
 const sectionCardStyle: React.CSSProperties = {
   background: "var(--white)",
@@ -20,57 +26,62 @@ const labelStyle: React.CSSProperties = {
   fontWeight: 600,
 };
 
-const zones = [
+const regions = [
   {
-    name: "North America",
-    predictions: 12432,
-    accuracy: 94,
-    drift: "low",
+    region: "North America",
+    predictions_count: 12432,
+    model_accuracy: 94,
+    drift_status: "low",
   },
   {
-    name: "Latin America",
-    predictions: 9831,
-    accuracy: 91,
-    drift: "moderate",
+    region: "Latin America",
+    predictions_count: 9831,
+    model_accuracy: 91,
+    drift_status: "moderate",
   },
   {
-    name: "Europe",
-    predictions: 7420,
-    accuracy: 95,
-    drift: "low",
+    region: "Europe",
+    predictions_count: 7420,
+    model_accuracy: 95,
+    drift_status: "low",
   },
   {
-    name: "Asia Pacific",
-    predictions: 13120,
-    accuracy: 88,
-    drift: "high",
+    region: "Asia Pacific",
+    predictions_count: 13120,
+    model_accuracy: 88,
+    drift_status: "high",
   },
-];
+] as const;
 
 const activity = [
   {
+    id: "ACT-001",
     title: "Tomato model drift increased",
     description:
       "Prediction confidence decreased by 6% in Asia Pacific datasets.",
-    tone: "warning",
+    type: "warning",
   },
   {
+    id: "ACT-002",
     title: "Retraining completed",
     description:
       "Corn classification pipeline deployed successfully.",
-    tone: "success",
+    type: "success",
   },
   {
+    id: "ACT-003",
     title: "New validation dataset uploaded",
     description:
       "4,200 annotated images added to MLflow tracking.",
-    tone: "info",
+    type: "info",
   },
 ] as const;
 
 export function AdminMetrics() {
   const maxPredictions = Math.max(
-    ...zones.map((z) => z.predictions),
+    ...regions.map(
+      (region) => region.predictions_count
+    )
   );
 
   return (
@@ -81,6 +92,7 @@ export function AdminMetrics() {
       }}
     >
       {/* header */}
+
       <section>
         <p
           style={{
@@ -113,13 +125,15 @@ export function AdminMetrics() {
             fontSize: ".98rem",
           }}
         >
-          Monitor platform-wide prediction quality,
-          confidence trends, drift detection, and operational
-          health across all deployed ML models.
+          Monitor platform-wide prediction
+          quality, drift detection, confidence
+          trends, and operational health across
+          all deployed ML models.
         </p>
       </section>
 
-      {/* top metrics */}
+      {/* metrics */}
+
       <section
         style={{
           display: "grid",
@@ -131,7 +145,7 @@ export function AdminMetrics() {
         <MetricCard
           label="Global accuracy"
           value="93.7%"
-          sub="Across all production models"
+          sub="Across production models"
           icon={<span>🎯</span>}
         />
 
@@ -158,6 +172,7 @@ export function AdminMetrics() {
       </section>
 
       {/* charts + activity */}
+
       <section
         style={{
           display: "grid",
@@ -167,7 +182,8 @@ export function AdminMetrics() {
           alignItems: "start",
         }}
       >
-        {/* region performance */}
+        {/* regional performance */}
+
         <section style={sectionCardStyle}>
           <div
             style={{
@@ -202,9 +218,9 @@ export function AdminMetrics() {
               gap: "1rem",
             }}
           >
-            {zones.map((zone) => (
+            {regions.map((region) => (
               <div
-                key={zone.name}
+                key={region.region}
                 style={{
                   display: "grid",
                   gap: ".6rem",
@@ -216,7 +232,8 @@ export function AdminMetrics() {
                 <div
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
+                    justifyContent:
+                      "space-between",
                     gap: "1rem",
                     flexWrap: "wrap",
                   }}
@@ -225,38 +242,47 @@ export function AdminMetrics() {
                     <p
                       style={{
                         fontWeight: 600,
-                        color: "var(--gray-900)",
+                        color:
+                          "var(--gray-900)",
                       }}
                     >
-                      {zone.name}
+                      {region.region}
                     </p>
 
                     <p
                       style={{
-                        color: "var(--gray-600)",
+                        color:
+                          "var(--gray-600)",
                         fontSize: ".85rem",
                       }}
                     >
-                      {zone.predictions.toLocaleString()}{" "}
-                      predictions · {zone.accuracy}% accuracy
+                      {region.predictions_count.toLocaleString()}{" "}
+                      predictions ·{" "}
+                      {region.model_accuracy}%
+                      accuracy
                     </p>
                   </div>
 
-                  <DriftPill drift={zone.drift} />
+                  <DriftPill
+                    drift={
+                      region.drift_status
+                    }
+                  />
                 </div>
 
                 <div
                   style={{
                     height: 10,
                     borderRadius: 999,
-                    background: "var(--gray-100)",
+                    background:
+                      "var(--gray-100)",
                     overflow: "hidden",
                   }}
                 >
                   <div
                     style={{
                       width: `${
-                        (zone.predictions /
+                        (region.predictions_count /
                           maxPredictions) *
                         100
                       }%`,
@@ -273,6 +299,7 @@ export function AdminMetrics() {
         </section>
 
         {/* activity */}
+
         <section style={sectionCardStyle}>
           <div
             style={{
@@ -309,10 +336,12 @@ export function AdminMetrics() {
           >
             {activity.map((item) => (
               <ActivityCard
-                key={item.title}
+                key={item.id}
                 title={item.title}
-                description={item.description}
-                tone={item.tone}
+                description={
+                  item.description
+                }
+                type={item.type}
               />
             ))}
           </div>
@@ -325,35 +354,44 @@ export function AdminMetrics() {
 function ActivityCard({
   title,
   description,
-  tone,
+  type,
 }: {
   title: string;
   description: string;
-  tone: "success" | "warning" | "info";
+  type:
+    | "success"
+    | "warning"
+    | "info";
 }) {
   const tones = {
     success: {
       bg: "rgba(74,143,74,0.1)",
       color: "var(--green-900)",
+      label: "Success",
     },
+
     warning: {
       bg: "rgba(214,137,16,0.12)",
       color: "var(--warning)",
+      label: "Warning",
     },
+
     info: {
       bg: "rgba(26,68,128,0.1)",
       color: "#1a4480",
+      label: "Info",
     },
   };
 
-  const current = tones[tone];
+  const current = tones[type];
 
   return (
     <article
       style={{
         borderRadius: "18px",
         padding: "1rem",
-        border: "1px solid rgba(45,106,45,0.08)",
+        border:
+          "1px solid rgba(45,106,45,0.08)",
         background:
           "linear-gradient(180deg, rgba(244,250,244,0.45), var(--white))",
       }}
@@ -373,7 +411,7 @@ function ActivityCard({
           textTransform: "uppercase",
         }}
       >
-        {tone}
+        {current.label}
       </span>
 
       <h3
@@ -402,7 +440,10 @@ function ActivityCard({
 function DriftPill({
   drift,
 }: {
-  drift: string;
+  drift:
+    | "low"
+    | "moderate"
+    | "high";
 }) {
   const tones = {
     low: {
@@ -410,20 +451,21 @@ function DriftPill({
       color: "var(--green-800)",
       label: "Low drift",
     },
+
     moderate: {
       bg: "#fff7e6",
       color: "var(--warning)",
       label: "Moderate drift",
     },
+
     high: {
       bg: "#fdf2f2",
       color: "var(--error)",
       label: "High drift",
     },
-  } as const;
+  };
 
-  const tone =
-    tones[drift as keyof typeof tones] || tones.low;
+  const tone = tones[drift];
 
   return (
     <span

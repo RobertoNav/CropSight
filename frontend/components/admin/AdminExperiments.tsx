@@ -4,29 +4,35 @@
 
 import { MetricCard } from "@/components/ui/MetricCard";
 
-const experiments = [
+/*
+  Mocked data aligned with API contract:
+  /admin/models
+  /admin/retraining/jobs
+*/
+
+const runs = [
   {
-    id: "EXP-204",
-    name: "Tomato Disease CNN",
+    id: "RUN-204",
+    model: "Tomato Disease CNN",
     status: "running",
-    accuracy: "94.8%",
-    startedBy: "Paola",
+    accuracy: 94.8,
+    triggeredBy: "Paola",
     createdAt: "2 hours ago",
   },
   {
-    id: "EXP-198",
-    name: "Corn Leaf Detection",
-    status: "completed",
-    accuracy: "91.2%",
-    startedBy: "Ferdi",
+    id: "RUN-198",
+    model: "Corn Leaf Detection",
+    status: "success",
+    accuracy: 91.2,
+    triggeredBy: "Ferdi",
     createdAt: "Yesterday",
   },
   {
-    id: "EXP-191",
-    name: "Potato Blight Classification",
+    id: "RUN-191",
+    model: "Potato Blight Classification",
     status: "failed",
-    accuracy: "--",
-    startedBy: "Admin",
+    accuracy: null,
+    triggeredBy: "Admin",
     createdAt: "2 days ago",
   },
 ] as const;
@@ -56,6 +62,7 @@ export function AdminExperiments() {
       }}
     >
       {/* header */}
+
       <section>
         <p
           style={{
@@ -64,7 +71,7 @@ export function AdminExperiments() {
             marginBottom: ".55rem",
           }}
         >
-          MLflow tracking
+          MLflow monitoring
         </p>
 
         <h1
@@ -77,7 +84,7 @@ export function AdminExperiments() {
             marginBottom: ".9rem",
           }}
         >
-          Experiment tracking
+          Model training runs
         </h1>
 
         <p
@@ -88,13 +95,14 @@ export function AdminExperiments() {
             fontSize: ".98rem",
           }}
         >
-          Monitor training experiments, compare model
-          performance, and supervise MLflow runs across the
-          entire platform.
+          Monitor retraining jobs, compare model
+          performance, and supervise MLflow runs
+          across the entire platform.
         </p>
       </section>
 
       {/* metrics */}
+
       <section
         style={{
           display: "grid",
@@ -104,9 +112,9 @@ export function AdminExperiments() {
         }}
       >
         <MetricCard
-          label="Active experiments"
+          label="Running jobs"
           value="12"
-          sub="Currently running"
+          sub="Currently processing"
           icon={<span>🧪</span>}
         />
 
@@ -118,9 +126,9 @@ export function AdminExperiments() {
         />
 
         <MetricCard
-          label="Completed today"
+          label="Successful runs"
           value="5"
-          sub="Successful training runs"
+          sub="Completed today"
           icon={<span>✅</span>}
         />
 
@@ -132,7 +140,8 @@ export function AdminExperiments() {
         />
       </section>
 
-      {/* experiments table */}
+      {/* runs table */}
+
       <section style={sectionCardStyle}>
         <div
           style={{
@@ -152,7 +161,7 @@ export function AdminExperiments() {
                 marginBottom: ".35rem",
               }}
             >
-              MLflow
+              Retraining
             </p>
 
             <h2
@@ -163,12 +172,12 @@ export function AdminExperiments() {
                 letterSpacing: "-.03em",
               }}
             >
-              Recent experiments
+              Recent training runs
             </h2>
           </div>
 
           <button className="btn btn--primary btn--sm">
-            Start experiment
+            Trigger retraining
           </button>
         </div>
 
@@ -186,14 +195,15 @@ export function AdminExperiments() {
             <thead>
               <tr
                 style={{
-                  borderBottom: "1px solid var(--gray-100)",
+                  borderBottom:
+                    "1px solid var(--gray-100)",
                 }}
               >
                 {[
-                  "Experiment",
+                  "Model",
                   "Status",
                   "Accuracy",
-                  "Started by",
+                  "Triggered by",
                   "Created",
                 ].map((item) => (
                   <th
@@ -215,11 +225,12 @@ export function AdminExperiments() {
             </thead>
 
             <tbody>
-              {experiments.map((experiment) => (
+              {runs.map((run) => (
                 <tr
-                  key={experiment.id}
+                  key={run.id}
                   style={{
-                    borderBottom: "1px solid var(--gray-100)",
+                    borderBottom:
+                      "1px solid var(--gray-100)",
                   }}
                 >
                   <td
@@ -231,20 +242,22 @@ export function AdminExperiments() {
                       <p
                         style={{
                           fontWeight: 600,
-                          color: "var(--gray-900)",
+                          color:
+                            "var(--gray-900)",
                           marginBottom: ".2rem",
                         }}
                       >
-                        {experiment.name}
+                        {run.model}
                       </p>
 
                       <span
                         style={{
                           fontSize: ".82rem",
-                          color: "var(--gray-400)",
+                          color:
+                            "var(--gray-400)",
                         }}
                       >
-                        {experiment.id}
+                        {run.id}
                       </span>
                     </div>
                   </td>
@@ -254,35 +267,42 @@ export function AdminExperiments() {
                       padding: "1rem",
                     }}
                   >
-                    <ExperimentStatus status={experiment.status} />
+                    <RunStatus
+                      status={run.status}
+                    />
                   </td>
 
                   <td
                     style={{
                       padding: "1rem",
                       fontWeight: 600,
-                      color: "var(--green-800)",
+                      color:
+                        "var(--green-800)",
                     }}
                   >
-                    {experiment.accuracy}
+                    {run.accuracy !== null
+                      ? `${run.accuracy}%`
+                      : "--"}
                   </td>
 
                   <td
                     style={{
                       padding: "1rem",
-                      color: "var(--gray-600)",
+                      color:
+                        "var(--gray-600)",
                     }}
                   >
-                    {experiment.startedBy}
+                    {run.triggeredBy}
                   </td>
 
                   <td
                     style={{
                       padding: "1rem",
-                      color: "var(--gray-400)",
+                      color:
+                        "var(--gray-400)",
                     }}
                   >
-                    {experiment.createdAt}
+                    {run.createdAt}
                   </td>
                 </tr>
               ))}
@@ -294,10 +314,13 @@ export function AdminExperiments() {
   );
 }
 
-function ExperimentStatus({
+function RunStatus({
   status,
 }: {
-  status: "running" | "completed" | "failed";
+  status:
+    | "running"
+    | "success"
+    | "failed";
 }) {
   const tones = {
     running: {
@@ -305,11 +328,13 @@ function ExperimentStatus({
       color: "#1a4480",
       label: "Running",
     },
-    completed: {
+
+    success: {
       bg: "var(--green-100)",
       color: "var(--green-800)",
-      label: "Completed",
+      label: "Success",
     },
+
     failed: {
       bg: "#fdf2f2",
       color: "var(--error)",

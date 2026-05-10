@@ -1,67 +1,186 @@
-// components/user/UserPredictions.tsx
-
 "use client";
 
 import Link from "next/link";
+
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import { MetricCard } from "@/components/ui/MetricCard";
 
-const sectionCardStyle: React.CSSProperties = {
-  background: "var(--white)",
-  borderRadius: "20px",
-  border: "1px solid rgba(45,106,45,0.08)",
-  boxShadow: "var(--shadow-card)",
-  padding: "1.35rem",
-};
+import {
+  getPredictions,
+} from "@/services/predictions.service";
 
-const labelStyle: React.CSSProperties = {
-  fontSize: ".75rem",
-  color: "var(--gray-400)",
-  textTransform: "uppercase",
-  letterSpacing: ".08em",
-  fontWeight: 600,
-};
+const sectionCardStyle: React.CSSProperties =
+  {
+    background:
+      "var(--white)",
 
-const bodyTextStyle: React.CSSProperties = {
-  color: "var(--gray-600)",
-  fontSize: ".92rem",
-};
+    borderRadius:
+      "20px",
 
-const predictionsMock = [
+    border:
+      "1px solid rgba(45,106,45,0.08)",
+
+    boxShadow:
+      "var(--shadow-card)",
+
+    padding: "1.35rem",
+  };
+
+const labelStyle: React.CSSProperties =
   {
-    id: "pred_001",
-    label: "Tomato Early Blight",
-    confidence: 0.94,
-    feedback: true,
-    created_at: "2026-05-01",
-    status: "healthy",
-  },
+    fontSize: ".75rem",
+
+    color:
+      "var(--gray-400)",
+
+    textTransform:
+      "uppercase",
+
+    letterSpacing:
+      ".08em",
+
+    fontWeight: 600,
+  };
+
+const bodyTextStyle: React.CSSProperties =
   {
-    id: "pred_002",
-    label: "Leaf Mold",
-    confidence: 0.88,
-    feedback: false,
-    created_at: "2026-05-02",
-    status: "warning",
-  },
-  {
-    id: "pred_003",
-    label: "Healthy Plant",
-    confidence: 0.97,
-    feedback: true,
-    created_at: "2026-05-03",
-    status: "healthy",
-  },
-  {
-    id: "pred_004",
-    label: "Bacterial Spot",
-    confidence: 0.82,
-    feedback: false,
-    created_at: "2026-05-04",
-    status: "danger",
-  },
-];
+    color:
+      "var(--gray-600)",
+
+    fontSize: ".92rem",
+  };
+
+interface PredictionItem {
+  id: string;
+
+  label: string;
+
+  confidence: number;
+
+  feedback: boolean;
+
+  created_at: string;
+
+  status:
+    | "healthy"
+    | "warning"
+    | "danger";
+}
 
 export function UserPredictions() {
+  const [
+    predictions,
+    setPredictions,
+  ] = useState<
+    PredictionItem[]
+  >([]);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  useEffect(() => {
+    loadPredictions();
+  }, []);
+
+  async function loadPredictions() {
+    try {
+      const response =
+        await getPredictions(
+          1,
+          50
+        );
+
+      const mappedPredictions =
+        (
+          response?.data ||
+          []
+        ).map(
+          (
+            item: any
+          ): PredictionItem => ({
+            id:
+              item.id,
+
+            label:
+              item.label ||
+              item.predicted_label ||
+              "Unknown",
+
+            confidence:
+              item.confidence ||
+              0,
+
+            feedback:
+              Boolean(
+                item.feedback
+              ),
+
+            created_at:
+              item.created_at,
+
+            status:
+              item.confidence >=
+              0.9
+                ? "healthy"
+                : item.confidence >=
+                  0.75
+                ? "warning"
+                : "danger",
+          })
+        );
+
+      setPredictions(
+        mappedPredictions
+      );
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const feedbackCount =
+    useMemo(() => {
+      return predictions.filter(
+        (
+          prediction
+        ) =>
+          prediction.feedback
+      ).length;
+    }, [predictions]);
+
+  const averageConfidence =
+    useMemo(() => {
+      if (
+        !predictions.length
+      )
+        return 0;
+
+      const total =
+        predictions.reduce(
+          (
+            acc,
+            current
+          ) =>
+            acc +
+            current.confidence,
+          0
+        );
+
+      return Math.round(
+        (total /
+          predictions.length) *
+          100
+      );
+    }, [predictions]);
+
   return (
     <div
       style={{
@@ -69,80 +188,124 @@ export function UserPredictions() {
         gap: "1.5rem",
       }}
     >
-      {/* metrics */}
       <section
         style={{
           display: "grid",
           gridTemplateColumns:
             "repeat(auto-fit, minmax(220px, 1fr))",
+
           gap: "1rem",
         }}
       >
         <MetricCard
           label="Total predictions"
-          value={predictionsMock.length}
+          value={
+            predictions.length
+          }
           sub="Stored in your history"
-          icon={<span>📂</span>}
+          icon={
+            <span>📂</span>
+          }
         />
 
         <MetricCard
           label="Feedback submitted"
-          value="2"
+          value={
+            feedbackCount
+          }
           sub="Helping improve the AI"
-          icon={<span>✅</span>}
+          icon={
+            <span>✅</span>
+          }
         />
 
         <MetricCard
           label="Average confidence"
-          value="90%"
+          value={`${averageConfidence}%`}
           sub="Across all analyses"
-          icon={<span>📈</span>}
+          icon={
+            <span>📈</span>
+          }
         />
       </section>
 
-      {/* history table */}
-      <section style={sectionCardStyle}>
+      <section
+        style={
+          sectionCardStyle
+        }
+      >
         <div
           style={{
-            marginBottom: "1.5rem",
+            marginBottom:
+              "1.5rem",
+
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+
+            alignItems:
+              "center",
+
+            justifyContent:
+              "space-between",
+
             gap: "1rem",
-            flexWrap: "wrap",
+
+            flexWrap:
+              "wrap",
           }}
         >
           <div>
             <p
               style={{
                 ...labelStyle,
-                color: "var(--green-800)",
-                marginBottom: ".45rem",
+
+                color:
+                  "var(--green-800)",
+
+                marginBottom:
+                  ".45rem",
               }}
             >
-              Diagnosis history
+              Diagnosis
+              history
             </p>
 
             <h2
               style={{
-                fontFamily: "var(--font-display)",
-                fontSize: "1.7rem",
+                fontFamily:
+                  "var(--font-display)",
+
+                fontSize:
+                  "1.7rem",
+
                 fontWeight: 400,
-                letterSpacing: "-.03em",
-                marginBottom: ".45rem",
+
+                letterSpacing:
+                  "-.03em",
+
+                marginBottom:
+                  ".45rem",
               }}
             >
-              Previous predictions
+              Previous
+              predictions
             </h2>
 
             <p
               style={{
                 ...bodyTextStyle,
+
                 maxWidth: 620,
               }}
             >
-              Review previous AI analyses, confidence scores,
-              and feedback submissions from your field uploads.
+              Review
+              previous AI
+              analyses,
+              confidence
+              scores, and
+              feedback
+              submissions
+              from your
+              field uploads.
             </p>
           </div>
 
@@ -154,229 +317,388 @@ export function UserPredictions() {
           </Link>
         </div>
 
-        {/* desktop table */}
-        <div
-          style={{
-            overflowX: "auto",
-          }}
-        >
-          <table
+        {loading ? (
+          <p
+            style={
+              bodyTextStyle
+            }
+          >
+            Loading
+            predictions...
+          </p>
+        ) : !predictions.length ? (
+          <div
             style={{
-              width: "100%",
-              borderCollapse: "collapse",
+              padding:
+                "2rem 1rem",
+
+              textAlign:
+                "center",
+
+              border:
+                "1px dashed var(--gray-200)",
+
+              borderRadius:
+                "18px",
             }}
           >
-            <thead>
-              <tr
+            <p
+              style={{
+                fontWeight: 600,
+
+                color:
+                  "var(--gray-900)",
+
+                marginBottom:
+                  ".45rem",
+              }}
+            >
+              No predictions
+              found
+            </p>
+
+            <p
+              style={
+                bodyTextStyle
+              }
+            >
+              Upload your
+              first crop
+              image to start
+              generating AI
+              diagnoses.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div
+              style={{
+                overflowX:
+                  "auto",
+              }}
+            >
+              <table
                 style={{
-                  borderBottom: "1px solid var(--gray-100)",
+                  width:
+                    "100%",
+
+                  borderCollapse:
+                    "collapse",
                 }}
               >
-                {[
-                  "Date",
-                  "Diagnosis",
-                  "Confidence",
-                  "Feedback",
-                  "Status",
-                  "Action",
-                ].map((head) => (
-                  <th
-                    key={head}
+                <thead>
+                  <tr
                     style={{
-                      textAlign: "left",
-                      padding: "1rem",
-                      fontSize: ".76rem",
-                      textTransform: "uppercase",
-                      letterSpacing: ".08em",
-                      color: "var(--gray-400)",
-                      fontWeight: 700,
+                      borderBottom:
+                        "1px solid var(--gray-100)",
                     }}
                   >
-                    {head}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody>
-              {predictionsMock.map((item) => (
-                <tr
-                  key={item.id}
-                  style={{
-                    borderBottom:
-                      "1px solid rgba(28,28,26,0.06)",
-                    transition: ".15s",
-                  }}
-                >
-                  <td
-                    style={{
-                      padding: "1rem",
-                      color: "var(--gray-600)",
-                      fontSize: ".9rem",
-                    }}
-                  >
-                    {formatDate(item.created_at)}
-                  </td>
-
-                  <td
-                    style={{
-                      padding: "1rem",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "grid",
-                        gap: ".2rem",
-                      }}
-                    >
-                      <p
-                        style={{
-                          fontWeight: 600,
-                          color: "var(--gray-900)",
-                        }}
-                      >
-                        {item.label}
-                      </p>
-
-                      <p
-                        style={{
-                          fontSize: ".82rem",
-                          color: "var(--gray-400)",
-                        }}
-                      >
-                        AI disease classification
-                      </p>
-                    </div>
-                  </td>
-
-                  <td
-                    style={{
-                      padding: "1rem",
-                      minWidth: 180,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "grid",
-                        gap: ".45rem",
-                      }}
-                    >
-                      <div
-                        style={{
-                          height: 8,
-                          borderRadius: 999,
-                          background:
-                            "rgba(28,28,26,0.08)",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <div
+                    {[
+                      "Date",
+                      "Diagnosis",
+                      "Confidence",
+                      "Feedback",
+                      "Status",
+                      "Action",
+                    ].map(
+                      (
+                        head
+                      ) => (
+                        <th
+                          key={
+                            head
+                          }
                           style={{
-                            width: `${
-                              item.confidence * 100
-                            }%`,
-                            height: "100%",
-                            borderRadius: 999,
-                            background:
-                              "linear-gradient(90deg, var(--green-700), var(--green-600))",
-                          }}
-                        />
-                      </div>
+                            textAlign:
+                              "left",
 
-                      <span
+                            padding:
+                              "1rem",
+
+                            fontSize:
+                              ".76rem",
+
+                            textTransform:
+                              "uppercase",
+
+                            letterSpacing:
+                              ".08em",
+
+                            color:
+                              "var(--gray-400)",
+
+                            fontWeight: 700,
+                          }}
+                        >
+                          {
+                            head
+                          }
+                        </th>
+                      )
+                    )}
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {predictions.map(
+                    (
+                      item
+                    ) => (
+                      <tr
+                        key={
+                          item.id
+                        }
                         style={{
-                          fontSize: ".82rem",
-                          fontWeight: 600,
-                          color: "var(--green-800)",
+                          borderBottom:
+                            "1px solid rgba(28,28,26,0.06)",
+
+                          transition:
+                            ".15s",
                         }}
                       >
-                        {(item.confidence * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                  </td>
+                        <td
+                          style={{
+                            padding:
+                              "1rem",
 
-                  <td
-                    style={{
-                      padding: "1rem",
-                    }}
-                  >
-                    <StatusPill
-                      tone={
-                        item.feedback
-                          ? "success"
-                          : "pending"
-                      }
-                      label={
-                        item.feedback
-                          ? "Submitted"
-                          : "Pending"
-                      }
-                    />
-                  </td>
+                            color:
+                              "var(--gray-600)",
 
-                  <td
-                    style={{
-                      padding: "1rem",
-                    }}
-                  >
-                    <StatusPill
-                      tone={item.status}
-                      label={
-                        item.status === "healthy"
-                          ? "Healthy"
-                          : item.status === "warning"
-                          ? "Warning"
-                          : "Critical"
-                      }
-                    />
-                  </td>
+                            fontSize:
+                              ".9rem",
+                          }}
+                        >
+                          {formatDate(
+                            item.created_at
+                          )}
+                        </td>
 
-                  <td
-                    style={{
-                      padding: "1rem",
-                    }}
-                  >
-                    <Link
-                      href={`/predictions/${item.id}`}
-                      className="link"
-                      style={{
-                        fontSize: ".9rem",
-                      }}
-                    >
-                      View details →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                        <td
+                          style={{
+                            padding:
+                              "1rem",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display:
+                                "grid",
 
-        <div
-          style={{
-            marginTop: "1.25rem",
-            paddingTop: "1rem",
-            borderTop: "1px solid var(--gray-100)",
-            display: "flex",
-            justifyContent: "space-between",
-            gap: "1rem",
-            flexWrap: "wrap",
-          }}
-        >
-          <p
-            style={{
-              fontSize: ".85rem",
-              color: "var(--gray-400)",
-            }}
-          >
-            Showing {predictionsMock.length} stored
-            predictions
-          </p>
+                              gap: ".2rem",
+                            }}
+                          >
+                            <p
+                              style={{
+                                fontWeight: 600,
 
-          <button className="btn btn--ghost btn--sm">
-            Export history
-          </button>
-        </div>
+                                color:
+                                  "var(--gray-900)",
+                              }}
+                            >
+                              {
+                                item.label
+                              }
+                            </p>
+
+                            <p
+                              style={{
+                                fontSize:
+                                  ".82rem",
+
+                                color:
+                                  "var(--gray-400)",
+                              }}
+                            >
+                              AI
+                              disease
+                              classification
+                            </p>
+                          </div>
+                        </td>
+
+                        <td
+                          style={{
+                            padding:
+                              "1rem",
+
+                            minWidth: 180,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display:
+                                "grid",
+
+                              gap: ".45rem",
+                            }}
+                          >
+                            <div
+                              style={{
+                                height: 8,
+
+                                borderRadius: 999,
+
+                                background:
+                                  "rgba(28,28,26,0.08)",
+
+                                overflow:
+                                  "hidden",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: `${
+                                    item.confidence *
+                                    100
+                                  }%`,
+
+                                  height:
+                                    "100%",
+
+                                  borderRadius: 999,
+
+                                  background:
+                                    "linear-gradient(90deg, var(--green-700), var(--green-600))",
+                                }}
+                              />
+                            </div>
+
+                            <span
+                              style={{
+                                fontSize:
+                                  ".82rem",
+
+                                fontWeight: 600,
+
+                                color:
+                                  "var(--green-800)",
+                              }}
+                            >
+                              {(
+                                item.confidence *
+                                100
+                              ).toFixed(
+                                1
+                              )}
+                              %
+                            </span>
+                          </div>
+                        </td>
+
+                        <td
+                          style={{
+                            padding:
+                              "1rem",
+                          }}
+                        >
+                          <StatusPill
+                            tone={
+                              item.feedback
+                                ? "success"
+                                : "pending"
+                            }
+                            label={
+                              item.feedback
+                                ? "Submitted"
+                                : "Pending"
+                            }
+                          />
+                        </td>
+
+                        <td
+                          style={{
+                            padding:
+                              "1rem",
+                          }}
+                        >
+                          <StatusPill
+                            tone={
+                              item.status
+                            }
+                            label={
+                              item.status ===
+                              "healthy"
+                                ? "Healthy"
+                                : item.status ===
+                                  "warning"
+                                ? "Warning"
+                                : "Critical"
+                            }
+                          />
+                        </td>
+
+                        <td
+                          style={{
+                            padding:
+                              "1rem",
+                          }}
+                        >
+                          <Link
+                            href={`/predictions/${item.id}`}
+                            className="link"
+                            style={{
+                              fontSize:
+                                ".9rem",
+                            }}
+                          >
+                            View
+                            details
+                            →
+                          </Link>
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div
+              style={{
+                marginTop:
+                  "1.25rem",
+
+                paddingTop:
+                  "1rem",
+
+                borderTop:
+                  "1px solid var(--gray-100)",
+
+                display: "flex",
+
+                justifyContent:
+                  "space-between",
+
+                gap: "1rem",
+
+                flexWrap:
+                  "wrap",
+              }}
+            >
+              <p
+                style={{
+                  fontSize:
+                    ".85rem",
+
+                  color:
+                    "var(--gray-400)",
+                }}
+              >
+                Showing{" "}
+                {
+                  predictions.length
+                }{" "}
+                stored
+                predictions
+              </p>
+
+              <button className="btn btn--ghost btn--sm">
+                Export
+                history
+              </button>
+            </div>
+          </>
+        )}
       </section>
     </div>
   );
@@ -391,43 +713,72 @@ function StatusPill({
 }) {
   const tones: Record<
     string,
-    { bg: string; color: string }
+    {
+      bg: string;
+      color: string;
+    }
   > = {
     success: {
       bg: "rgba(74,143,74,0.1)",
-      color: "var(--green-800)",
+      color:
+        "var(--green-800)",
     },
+
     pending: {
       bg: "rgba(214,137,16,0.12)",
-      color: "var(--warning)",
+      color:
+        "var(--warning)",
     },
+
     healthy: {
       bg: "rgba(74,143,74,0.1)",
-      color: "var(--green-800)",
+      color:
+        "var(--green-800)",
     },
+
     warning: {
       bg: "rgba(214,137,16,0.12)",
-      color: "var(--warning)",
+      color:
+        "var(--warning)",
     },
+
     danger: {
       bg: "rgba(209,63,63,0.1)",
-      color: "var(--error)",
+      color:
+        "var(--error)",
     },
   };
 
-  const current = tones[tone];
+  const current =
+    tones[tone];
 
   return (
     <span
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: ".35rem .7rem",
-        borderRadius: 999,
-        background: current.bg,
-        color: current.color,
-        fontSize: ".75rem",
+        display:
+          "inline-flex",
+
+        alignItems:
+          "center",
+
+        justifyContent:
+          "center",
+
+        padding:
+          ".35rem .7rem",
+
+        borderRadius:
+          999,
+
+        background:
+          current.bg,
+
+        color:
+          current.color,
+
+        fontSize:
+          ".75rem",
+
         fontWeight: 700,
       }}
     >
@@ -436,10 +787,17 @@ function StatusPill({
   );
 }
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(date));
+function formatDate(
+  date: string
+) {
+  return new Intl.DateTimeFormat(
+    "en",
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }
+  ).format(
+    new Date(date)
+  );
 }

@@ -1,9 +1,17 @@
-// components/user/UserPredictionDetail.tsx
-
 "use client";
 
 import Link from "next/link";
+
+import {
+  useEffect,
+  useState,
+} from "react";
+
 import { useParams } from "next/navigation";
+
+import {
+  getPredictionById,
+} from "@/services/predictions.service";
 
 const sectionCardStyle: React.CSSProperties = {
   background: "var(--white)",
@@ -26,44 +34,138 @@ const bodyTextStyle: React.CSSProperties = {
   fontSize: ".92rem",
 };
 
-const mockPrediction = {
-  id: "pred_001",
-  label: "Tomato Early Blight",
-  confidence: 0.94,
-  image_url:
-    "https://images.unsplash.com/photo-1592841200221-a6898f307baa?q=80&w=1200&auto=format&fit=crop",
-  model_version: "v2.3.1",
-  created_at: "2026-05-04",
-  feedback: {
-    is_correct: false,
-    correct_label: "Leaf Mold",
-  },
-};
+interface PredictionDetail {
+  id: string;
+  label: string;
+  confidence: number;
+  image_url: string;
+  model_version: string;
+  created_at: string;
+  feedback?: {
+    is_correct: boolean;
+    correct_label?: string;
+  };
+}
 
 export function UserPredictionDetail() {
-  const { id } = useParams();
+  const params = useParams();
 
-  const prediction = {
-    ...mockPrediction,
-    id: String(id),
-  };
+  const id =
+    typeof params.id === "string"
+      ? params.id
+      : "";
+
+  const [
+    prediction,
+    setPrediction,
+  ] =
+    useState<PredictionDetail | null>(
+      null
+    );
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+
+    loadPrediction();
+  }, [id]);
+
+  async function loadPrediction() {
+    try {
+      setLoading(true);
+
+      const response =
+        await getPredictionById(
+          id
+        );
+
+      setPrediction({
+        id:
+          response.id,
+
+        label:
+          response.label ||
+          response.predicted_label ||
+          "Unknown",
+
+        confidence:
+          response.confidence ||
+          0,
+
+        image_url:
+          response.image_url,
+
+        model_version:
+          response.model_version ||
+          "v1.0.0",
+
+        created_at:
+          response.created_at,
+
+        feedback:
+          response.feedback
+            ? {
+                is_correct:
+                  response.feedback
+                    .is_correct,
+
+                correct_label:
+                  response.feedback
+                    .correct_label,
+              }
+            : undefined,
+      });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          padding: "2rem",
+        }}
+      >
+        Loading prediction...
+      </div>
+    );
+  }
+
+  if (!prediction) {
+    return (
+      <div
+        style={{
+          padding: "2rem",
+        }}
+      >
+        Prediction not found.
+      </div>
+    );
+  }
 
   return (
-    
-    
     <div
-  style={{
-    width: "100%",
-    maxWidth: 1280,
-    margin: "0 auto",
-  }}
->
-      {/* top actions */}
+      style={{
+        width: "100%",
+        maxWidth: 1280,
+        margin: "0 auto",
+        display: "grid",
+        gap: "1.5rem",
+      }}
+    >
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent:
+            "space-between",
           gap: "1rem",
           flexWrap: "wrap",
         }}
@@ -72,8 +174,10 @@ export function UserPredictionDetail() {
           <p
             style={{
               ...labelStyle,
-              color: "var(--green-800)",
-              marginBottom: ".45rem",
+              color:
+                "var(--green-800)",
+              marginBottom:
+                ".45rem",
             }}
           >
             Prediction detail
@@ -81,12 +185,15 @@ export function UserPredictionDetail() {
 
           <h1
             style={{
-              fontFamily: "var(--font-display)",
+              fontFamily:
+                "var(--font-display)",
               fontSize: "2.1rem",
               fontWeight: 400,
-              letterSpacing: "-.03em",
+              letterSpacing:
+                "-.03em",
               lineHeight: 1.1,
-              marginBottom: ".45rem",
+              marginBottom:
+                ".45rem",
             }}
           >
             AI diagnosis report
@@ -98,9 +205,15 @@ export function UserPredictionDetail() {
               maxWidth: 680,
             }}
           >
-            Review the uploaded crop image, prediction
-            confidence, feedback status, and metadata generated
-            during the diagnosis process.
+            Review the uploaded
+            crop image,
+            prediction
+            confidence,
+            feedback status,
+            and metadata
+            generated during
+            the diagnosis
+            process.
           </p>
         </div>
 
@@ -112,7 +225,6 @@ export function UserPredictionDetail() {
         </Link>
       </div>
 
-      {/* main layout */}
       <section
         style={{
           display: "grid",
@@ -122,17 +234,22 @@ export function UserPredictionDetail() {
           alignItems: "start",
         }}
       >
-        {/* image */}
-        <section style={sectionCardStyle}>
+        <section
+          style={
+            sectionCardStyle
+          }
+        >
           <div
             style={{
-              marginBottom: "1rem",
+              marginBottom:
+                "1rem",
             }}
           >
             <p
               style={{
                 ...labelStyle,
-                marginBottom: ".35rem",
+                marginBottom:
+                  ".35rem",
               }}
             >
               Uploaded image
@@ -140,46 +257,58 @@ export function UserPredictionDetail() {
 
             <h2
               style={{
-                fontSize: "1.2rem",
+                fontSize:
+                  "1.2rem",
                 fontWeight: 600,
-                color: "var(--gray-900)",
+                color:
+                  "var(--gray-900)",
               }}
             >
-              Field capture preview
+              Field capture
+              preview
             </h2>
           </div>
 
           <img
-            src={prediction.image_url}
+            src={
+              prediction.image_url
+            }
             alt="Prediction image"
             style={{
               width: "100%",
-              borderRadius: "18px",
+              borderRadius:
+                "18px",
               objectFit: "cover",
-              border: "1px solid var(--gray-100)",
+              border:
+                "1px solid var(--gray-100)",
             }}
           />
         </section>
 
-        {/* info */}
         <div
           style={{
             display: "grid",
             gap: "1.5rem",
           }}
         >
-          {/* summary */}
-          <section style={sectionCardStyle}>
+          <section
+            style={
+              sectionCardStyle
+            }
+          >
             <div
               style={{
-                marginBottom: "1rem",
+                marginBottom:
+                  "1rem",
               }}
             >
               <p
                 style={{
                   ...labelStyle,
-                  color: "var(--green-800)",
-                  marginBottom: ".35rem",
+                  color:
+                    "var(--green-800)",
+                  marginBottom:
+                    ".35rem",
                 }}
               >
                 Diagnosis
@@ -187,13 +316,18 @@ export function UserPredictionDetail() {
 
               <h2
                 style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: "1.6rem",
+                  fontFamily:
+                    "var(--font-display)",
+                  fontSize:
+                    "1.6rem",
                   fontWeight: 400,
-                  letterSpacing: "-.03em",
+                  letterSpacing:
+                    "-.03em",
                 }}
               >
-                {prediction.label}
+                {
+                  prediction.label
+                }
               </h2>
             </div>
 
@@ -205,44 +339,68 @@ export function UserPredictionDetail() {
             >
               <InfoTile
                 label="Prediction ID"
-                value={prediction.id}
+                value={
+                  prediction.id
+                }
               />
 
               <InfoTile
                 label="Model version"
-                value={prediction.model_version}
+                value={
+                  prediction.model_version
+                }
               />
 
               <InfoTile
                 label="Created at"
-                value={formatDate(prediction.created_at)}
+                value={formatDate(
+                  prediction.created_at
+                )}
               />
 
-              {/* confidence */}
               <div
                 style={{
                   padding: "1rem",
-                  borderRadius: "18px",
-                  background: "var(--gray-50)",
-                  border: "1px solid var(--gray-100)",
+                  borderRadius:
+                    "18px",
+                  background:
+                    "var(--gray-50)",
+                  border:
+                    "1px solid var(--gray-100)",
                 }}
               >
                 <div
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: ".7rem",
+                    display:
+                      "flex",
+                    justifyContent:
+                      "space-between",
+                    marginBottom:
+                      ".7rem",
                   }}
                 >
-                  <p style={labelStyle}>Confidence</p>
+                  <p
+                    style={
+                      labelStyle
+                    }
+                  >
+                    Confidence
+                  </p>
 
                   <p
                     style={{
                       fontWeight: 700,
-                      color: "var(--green-800)",
+                      color:
+                        "var(--green-800)",
                     }}
                   >
-                    {(prediction.confidence * 100).toFixed(1)}%
+                    {(
+                      prediction.confidence *
+                      100
+                    ).toFixed(
+                      1
+                    )}
+                    %
                   </p>
                 </div>
 
@@ -250,16 +408,20 @@ export function UserPredictionDetail() {
                   style={{
                     height: 10,
                     borderRadius: 999,
-                    background: "rgba(28,28,26,0.08)",
-                    overflow: "hidden",
+                    background:
+                      "rgba(28,28,26,0.08)",
+                    overflow:
+                      "hidden",
                   }}
                 >
                   <div
                     style={{
                       width: `${
-                        prediction.confidence * 100
+                        prediction.confidence *
+                        100
                       }%`,
-                      height: "100%",
+                      height:
+                        "100%",
                       borderRadius: 999,
                       background:
                         "linear-gradient(90deg, var(--green-700), var(--green-600))",
@@ -270,19 +432,25 @@ export function UserPredictionDetail() {
             </div>
           </section>
 
-          {/* feedback */}
           {prediction.feedback && (
-            <section style={sectionCardStyle}>
+            <section
+              style={
+                sectionCardStyle
+              }
+            >
               <div
                 style={{
-                  marginBottom: "1rem",
+                  marginBottom:
+                    "1rem",
                 }}
               >
                 <p
                   style={{
                     ...labelStyle,
-                    color: "var(--green-800)",
-                    marginBottom: ".35rem",
+                    color:
+                      "var(--green-800)",
+                    marginBottom:
+                      ".35rem",
                   }}
                 >
                   User feedback
@@ -290,13 +458,17 @@ export function UserPredictionDetail() {
 
                 <h2
                   style={{
-                    fontFamily: "var(--font-display)",
-                    fontSize: "1.4rem",
+                    fontFamily:
+                      "var(--font-display)",
+                    fontSize:
+                      "1.4rem",
                     fontWeight: 400,
-                    letterSpacing: "-.03em",
+                    letterSpacing:
+                      "-.03em",
                   }}
                 >
-                  Validation result
+                  Validation
+                  result
                 </h2>
               </div>
 
@@ -308,39 +480,56 @@ export function UserPredictionDetail() {
               >
                 <FeedbackPill
                   correct={
-                    prediction.feedback.is_correct
+                    prediction
+                      .feedback
+                      .is_correct
                   }
                 />
 
-                {!prediction.feedback.is_correct && (
-                  <div
-                    style={{
-                      padding: "1rem",
-                      borderRadius: "18px",
-                      background:
-                        "linear-gradient(180deg, rgba(244,250,244,0.5), var(--white))",
-                      border:
-                        "1px solid rgba(45,106,45,0.08)",
-                    }}
-                  >
-                    <p style={labelStyle}>
-                      Correct label
-                    </p>
-
-                    <p
+                {!prediction
+                  .feedback
+                  .is_correct &&
+                  prediction
+                    .feedback
+                    .correct_label && (
+                    <div
                       style={{
-                        marginTop: ".45rem",
-                        fontWeight: 600,
-                        color: "var(--gray-900)",
+                        padding:
+                          "1rem",
+                        borderRadius:
+                          "18px",
+                        background:
+                          "linear-gradient(180deg, rgba(244,250,244,0.5), var(--white))",
+                        border:
+                          "1px solid rgba(45,106,45,0.08)",
                       }}
                     >
-                      {
-                        prediction.feedback
-                          .correct_label
-                      }
-                    </p>
-                  </div>
-                )}
+                      <p
+                        style={
+                          labelStyle
+                        }
+                      >
+                        Correct
+                        label
+                      </p>
+
+                      <p
+                        style={{
+                          marginTop:
+                            ".45rem",
+                          fontWeight: 600,
+                          color:
+                            "var(--gray-900)",
+                        }}
+                      >
+                        {
+                          prediction
+                            .feedback
+                            .correct_label
+                        }
+                      </p>
+                    </div>
+                  )}
               </div>
             </section>
           )}
@@ -362,18 +551,24 @@ function InfoTile({
       style={{
         padding: "1rem",
         borderRadius: "18px",
-        background: "var(--gray-50)",
-        border: "1px solid var(--gray-100)",
+        background:
+          "var(--gray-50)",
+        border:
+          "1px solid var(--gray-100)",
       }}
     >
-      <p style={labelStyle}>{label}</p>
+      <p style={labelStyle}>
+        {label}
+      </p>
 
       <p
         style={{
           marginTop: ".4rem",
           fontWeight: 600,
-          color: "var(--gray-900)",
-          wordBreak: "break-word",
+          color:
+            "var(--gray-900)",
+          wordBreak:
+            "break-word",
         }}
       >
         {value}
@@ -390,11 +585,15 @@ function FeedbackPill({
   return (
     <span
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
+        display:
+          "inline-flex",
+        alignItems:
+          "center",
+        justifyContent:
+          "center",
         width: "fit-content",
-        padding: ".45rem .8rem",
+        padding:
+          ".45rem .8rem",
         borderRadius: 999,
         background: correct
           ? "rgba(74,143,74,0.1)"
@@ -413,10 +612,17 @@ function FeedbackPill({
   );
 }
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(date));
+function formatDate(
+  date: string
+) {
+  return new Intl.DateTimeFormat(
+    "en",
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }
+  ).format(
+    new Date(date)
+  );
 }

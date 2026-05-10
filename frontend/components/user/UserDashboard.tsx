@@ -1,57 +1,181 @@
+"use client";
+
 import Link from "next/link";
+
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
 import { MetricCard } from "@/components/ui/MetricCard";
+
 import { Badge } from "@/components/ui/Badge";
 
-const mockUser = {
-  name: "Paola",
-  company: "CropSight Labs",
-  email: "paola@cropsight.ai",
-  joinedAt: "2025-12-10",
-};
+import {
+  getMe,
+} from "@/services/auth.service";
 
-const mockPredictions = [
+import {
+  getPredictions,
+} from "@/services/predictions.service";
+
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  company?: {
+    name: string;
+  };
+  created_at?: string;
+}
+
+interface PredictionItem {
+  id: string;
+  label: string;
+  confidence: number;
+  created_at: string;
+}
+
+const sectionCardStyle: React.CSSProperties =
   {
-    id: 1,
-    label: "Healthy",
-    confidence: 0.97,
-    createdAt: "2026-05-01",
-  },
+    background:
+      "var(--white)",
+
+    borderRadius:
+      "20px",
+
+    border:
+      "1px solid rgba(45,106,45,0.08)",
+
+    boxShadow:
+      "var(--shadow-card)",
+
+    padding: "1.35rem",
+  };
+
+const labelStyle: React.CSSProperties =
   {
-    id: 2,
-    label: "Powdery mildew",
-    confidence: 0.91,
-    createdAt: "2026-05-02",
-  },
+    fontSize: ".75rem",
+
+    color:
+      "var(--gray-400)",
+
+    textTransform:
+      "uppercase",
+
+    letterSpacing:
+      ".08em",
+
+    fontWeight: 600,
+  };
+
+const bodyTextStyle: React.CSSProperties =
   {
-    id: 3,
-    label: "Rust",
-    confidence: 0.88,
-    createdAt: "2026-05-04",
-  },
-];
+    color:
+      "var(--gray-600)",
 
-const sectionCardStyle: React.CSSProperties = {
-  background: "var(--white)",
-  borderRadius: "20px",
-  border: "1px solid rgba(45,106,45,0.08)",
-  boxShadow: "var(--shadow-card)",
-  padding: "1.35rem",
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: ".75rem",
-  color: "var(--gray-400)",
-  textTransform: "uppercase",
-  letterSpacing: ".08em",
-  fontWeight: 600,
-};
-
-const bodyTextStyle: React.CSSProperties = {
-  color: "var(--gray-600)",
-  fontSize: ".92rem",
-};
+    fontSize: ".92rem",
+  };
 
 export function UserDashboard() {
+  const [user, setUser] =
+    useState<UserProfile | null>(
+      null
+    );
+
+  const [
+    predictions,
+    setPredictions,
+  ] = useState<
+    PredictionItem[]
+  >([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+async function loadDashboard() {
+  try {
+    const [
+      userResponse,
+      predictionsResponse,
+    ] =
+      await Promise.all([
+        getMe(),
+
+        getPredictions(
+          1,
+          10
+        ),
+      ]);
+
+    setUser(userResponse);
+
+    setPredictions(
+      (
+        predictionsResponse
+          ?.data || []
+      ).map(
+        (
+          prediction: any
+        ) => ({
+          id:
+            prediction.id,
+
+          label:
+            prediction.label ||
+            prediction.predicted_label ||
+            "Unknown",
+
+          confidence:
+            prediction.confidence ||
+            0,
+
+          created_at:
+            prediction.created_at,
+        })
+      )
+    );
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setLoading(false);
+  }
+}
+
+  const bestConfidence =
+    useMemo(() => {
+      if (
+        !predictions.length
+      )
+        return 0;
+
+      return Math.max(
+        ...predictions.map(
+          (
+            prediction
+          ) =>
+            prediction.confidence
+        )
+      );
+    }, [predictions]);
+
+  const uniqueLabels =
+    useMemo(() => {
+      return new Set(
+        predictions.map(
+          (
+            prediction
+          ) =>
+            prediction.label
+        )
+      ).size;
+    }, [predictions]);
+
   return (
     <div
       style={{
@@ -63,7 +187,10 @@ export function UserDashboard() {
       <section
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
+
+          gridTemplateColumns:
+            "repeat(auto-fit,minmax(320px,1fr))",
+
           gap: "1.5rem",
         }}
       >
@@ -72,45 +199,85 @@ export function UserDashboard() {
           title="Field user overview"
           description="A quick operational snapshot of your account and prediction activity."
         >
-          <div style={{ display: "grid", gap: "1.25rem" }}>
+          <div
+            style={{
+              display: "grid",
+              gap: "1.25rem",
+            }}
+          >
             <div>
-              <p style={labelStyle}>Welcome back</p>
+              <p
+                style={
+                  labelStyle
+                }
+              >
+                Welcome back
+              </p>
 
               <h2
                 style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: "2rem",
+                  fontFamily:
+                    "var(--font-display)",
+
+                  fontSize:
+                    "2rem",
+
                   fontWeight: 400,
+
                   lineHeight: 1.05,
-                  letterSpacing: "-.03em",
-                  marginTop: ".2rem",
+
+                  letterSpacing:
+                    "-.03em",
+
+                  marginTop:
+                    ".2rem",
                 }}
               >
-                {mockUser.name}
+                {loading
+                  ? "Loading..."
+                  : user?.name ||
+                    "User"}
               </h2>
             </div>
 
             <div
               style={{
-                display: "grid",
+                display:
+                  "grid",
+
                 gridTemplateColumns:
                   "repeat(auto-fit, minmax(190px,1fr))",
+
                 gap: "1rem",
               }}
             >
               <InfoTile
                 label="Company"
-                value={mockUser.company}
+                value={
+                  user
+                    ?.company
+                    ?.name ||
+                  "No company"
+                }
               />
 
               <InfoTile
                 label="Email"
-                value={mockUser.email}
+                value={
+                  user?.email ||
+                  "-"
+                }
               />
 
               <InfoTile
                 label="Member since"
-                value={formatDate(mockUser.joinedAt)}
+                value={
+                  user?.created_at
+                    ? formatDate(
+                        user.created_at
+                      )
+                    : "-"
+                }
               />
             </div>
           </div>
@@ -121,7 +288,12 @@ export function UserDashboard() {
           title="Continue your workflow"
           description="Jump into the next actions without leaving your dashboard."
         >
-          <div style={{ display: "grid", gap: "1rem" }}>
+          <div
+            style={{
+              display: "grid",
+              gap: "1rem",
+            }}
+          >
             <QuickLink
               href="/predict"
               label="Run a new prediction"
@@ -144,45 +316,74 @@ export function UserDashboard() {
       <section
         style={{
           display: "grid",
+
           gridTemplateColumns:
             "repeat(auto-fit, minmax(220px,1fr))",
+
           gap: "1rem",
         }}
       >
         <MetricCard
           label="Total predictions"
-          value={mockPredictions.length}
+          value={
+            predictions.length
+          }
           sub="Captured analyses"
           trend={{
-            label: "+12%",
+            label:
+              "Latest activity",
+
             up: true,
           }}
-          icon={<span>🌿</span>}
+          icon={
+            <span>
+              🌿
+            </span>
+          }
         />
 
         <MetricCard
           label="Best confidence"
-          value="97%"
+          value={`${(
+            bestConfidence *
+            100
+          ).toFixed(1)}%`}
           sub="Latest model"
           trend={{
-            label: "Stable",
+            label:
+              "Stable",
+
             up: true,
           }}
-          icon={<span>🎯</span>}
+          icon={
+            <span>
+              🎯
+            </span>
+          }
         />
 
         <MetricCard
           label="Detected diseases"
-          value="3"
+          value={
+            uniqueLabels
+          }
           sub="Unique labels"
-          icon={<span>🦠</span>}
+          icon={
+            <span>
+              🦠
+            </span>
+          }
         />
 
         <MetricCard
           label="Feedback rate"
           value="94%"
           sub="Validated predictions"
-          icon={<span>✅</span>}
+          icon={
+            <span>
+              ✅
+            </span>
+          }
         />
       </section>
 
@@ -192,49 +393,89 @@ export function UserDashboard() {
         title="Recent predictions"
         description="A compact timeline of your latest crop analyses."
       >
-        <div style={{ display: "grid", gap: ".9rem" }}>
-          {mockPredictions.map((prediction) => (
-            <div
-              key={prediction.id}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                paddingBottom: ".9rem",
-                borderBottom:
-                  "1px solid var(--gray-100)",
-              }}
+        <div
+          style={{
+            display: "grid",
+            gap: ".9rem",
+          }}
+        >
+          {!predictions.length &&
+          !loading ? (
+            <p
+              style={
+                bodyTextStyle
+              }
             >
-              <div>
-                <p
-                  style={{
-                    fontWeight: 600,
-                    color: "var(--gray-900)",
-                  }}
-                >
-                  {prediction.label}
-                </p>
+              No predictions
+              yet.
+            </p>
+          ) : null}
 
-                <p
-                  style={{
-                    ...bodyTextStyle,
-                    fontSize: ".85rem",
-                  }}
-                >
-                  {formatDate(
-                    prediction.createdAt,
+          {predictions.map(
+            (
+              prediction
+            ) => (
+              <div
+                key={
+                  prediction.id
+                }
+                style={{
+                  display:
+                    "flex",
+
+                  justifyContent:
+                    "space-between",
+
+                  alignItems:
+                    "center",
+
+                  paddingBottom:
+                    ".9rem",
+
+                  borderBottom:
+                    "1px solid var(--gray-100)",
+                }}
+              >
+                <div>
+                  <p
+                    style={{
+                      fontWeight: 600,
+
+                      color:
+                        "var(--gray-900)",
+                    }}
+                  >
+                    {
+                      prediction.label
+                    }
+                  </p>
+
+                  <p
+                    style={{
+                      ...bodyTextStyle,
+
+                      fontSize:
+                        ".85rem",
+                    }}
+                  >
+                    {formatDate(
+                      prediction.created_at
+                    )}
+                  </p>
+                </div>
+
+                <Badge>
+                  {(
+                    prediction.confidence *
+                    100
+                  ).toFixed(
+                    1
                   )}
-                </p>
+                  %
+                </Badge>
               </div>
-
-              <Badge>
-                {(
-                  prediction.confidence * 100
-                ).toFixed(1)}
-                %
-              </Badge>
-            </div>
-          ))}
+            )
+          )}
         </div>
       </SectionCard>
     </div>
@@ -253,13 +494,26 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section style={sectionCardStyle}>
-      <div style={{ marginBottom: "1.15rem" }}>
+    <section
+      style={
+        sectionCardStyle
+      }
+    >
+      <div
+        style={{
+          marginBottom:
+            "1.15rem",
+        }}
+      >
         <p
           style={{
             ...labelStyle,
-            color: "var(--green-800)",
-            marginBottom: ".45rem",
+
+            color:
+              "var(--green-800)",
+
+            marginBottom:
+              ".45rem",
           }}
         >
           {eyebrow}
@@ -269,10 +523,16 @@ function SectionCard({
           style={{
             fontFamily:
               "var(--font-display)",
-            fontSize: "1.45rem",
+
+            fontSize:
+              "1.45rem",
+
             fontWeight: 400,
+
             lineHeight: 1.1,
-            letterSpacing: "-.02em",
+
+            letterSpacing:
+              "-.02em",
           }}
         >
           {title}
@@ -281,7 +541,9 @@ function SectionCard({
         <p
           style={{
             ...bodyTextStyle,
-            marginTop: ".45rem",
+
+            marginTop:
+              ".45rem",
           }}
         >
           {description}
@@ -303,22 +565,36 @@ function InfoTile({
   return (
     <div
       style={{
-        padding: ".95rem 1rem",
-        borderRadius: "16px",
-        background: "var(--gray-50)",
+        padding:
+          ".95rem 1rem",
+
+        borderRadius:
+          "16px",
+
+        background:
+          "var(--gray-50)",
+
         border:
           "1px solid var(--gray-100)",
       }}
     >
-      <p style={labelStyle}>
+      <p
+        style={
+          labelStyle
+        }
+      >
         {label}
       </p>
 
       <p
         style={{
-          marginTop: ".35rem",
+          marginTop:
+            ".35rem",
+
           fontWeight: 600,
-          color: "var(--gray-900)",
+
+          color:
+            "var(--gray-900)",
         }}
       >
         {value}
@@ -339,7 +615,9 @@ function QuickLink({
       href={href}
       className="link"
       style={{
-        textDecoration: "none",
+        textDecoration:
+          "none",
+
         fontWeight: 600,
       }}
     >
@@ -348,10 +626,17 @@ function QuickLink({
   );
 }
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(value));
+function formatDate(
+  value: string
+) {
+  return new Intl.DateTimeFormat(
+    "en",
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }
+  ).format(
+    new Date(value)
+  );
 }

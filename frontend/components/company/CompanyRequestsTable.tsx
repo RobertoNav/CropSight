@@ -1,38 +1,35 @@
+// components/company/CompanyRequestsTable.tsx
+
 "use client";
 
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import type { CompanyJoinRequest } from "@/mocks/data/companyAdmin";
+import type { JoinRequest } from "@/services/company.service";
 
 interface CompanyRequestsTableProps {
-  requests: CompanyJoinRequest[];
-  onApprove: (request: CompanyJoinRequest) => void;
-  onReject: (request: CompanyJoinRequest) => void;
+  requests: JoinRequest[];
+
+  onApprove: (
+    request: JoinRequest
+  ) => void;
+
+  onReject: (
+    request: JoinRequest
+  ) => void;
+
   onClearFilters: () => void;
+
   hasActiveFilters: boolean;
+
+  loading?: boolean;
 }
 
-const tableHeaderStyle: React.CSSProperties = {
-  textAlign: "left",
-  padding: ".8rem 1rem",
-  fontSize: ".72rem",
-  fontWeight: 700,
-  letterSpacing: ".08em",
-  textTransform: "uppercase",
-  color: "var(--gray-400)",
-  borderBottom: "1px solid var(--gray-100)",
-};
-
-const cellStyle: React.CSSProperties = {
-  padding: "1rem",
-  borderBottom: "1px solid var(--gray-100)",
-  verticalAlign: "top",
-};
-
-const toneByStatus = {
-  pending: { status: "pending", label: "Pending" },
-  approved: { status: "high", label: "Approved" },
-  rejected: { status: "error", label: "Rejected" },
-} as const;
+const labelStyle: React.CSSProperties =
+  {
+    fontSize: ".72rem",
+    color: "var(--gray-400)",
+    textTransform: "uppercase",
+    letterSpacing: ".08em",
+    fontWeight: 700,
+  };
 
 export function CompanyRequestsTable({
   requests,
@@ -40,144 +37,218 @@ export function CompanyRequestsTable({
   onReject,
   onClearFilters,
   hasActiveFilters,
+  loading,
 }: CompanyRequestsTableProps) {
-  if (!requests.length) {
+  if (loading) {
     return (
       <div
         style={{
-          border: "1px dashed var(--gray-200)",
-          borderRadius: "18px",
-          padding: "2rem 1.25rem",
-          background:
-            "linear-gradient(180deg, rgba(244,250,244,0.55), var(--white))",
-          display: "grid",
-          gap: ".65rem",
-          justifyItems: "start",
+          padding: "2rem 0",
+          textAlign: "center",
+          color:
+            "var(--gray-400)",
         }}
       >
-        <p style={{ fontWeight: 600, color: "var(--gray-900)" }}>
-          No requests match the current filters.
+        Loading requests...
+      </div>
+    );
+  }
+
+  if (requests.length === 0) {
+    return (
+      <div
+        style={{
+          padding: "2rem 0",
+          textAlign: "center",
+        }}
+      >
+        <p
+          style={{
+            color:
+              "var(--gray-600)",
+            marginBottom:
+              ".75rem",
+          }}
+        >
+          No requests found.
         </p>
-        <p style={{ color: "var(--gray-600)", fontSize: ".92rem" }}>
-          Broaden the search or clear filters to bring the full queue back into
-          view.
-        </p>
-        {hasActiveFilters ? (
+
+        {hasActiveFilters && (
           <button
             type="button"
             className="btn btn--ghost btn--sm"
-            style={{ width: "auto" }}
-            onClick={onClearFilters}
+            onClick={
+              onClearFilters
+            }
           >
             Clear filters
           </button>
-        ) : null}
+        )}
       </div>
     );
   }
 
   return (
-    <div style={{ overflowX: "auto" }}>
+    <div
+      style={{
+        overflowX: "auto",
+      }}
+    >
       <table
-        style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}
+        style={{
+          width: "100%",
+          borderCollapse:
+            "collapse",
+        }}
       >
         <thead>
-          <tr>
-            <th style={tableHeaderStyle}>Applicant</th>
-            <th style={tableHeaderStyle}>Requested role</th>
-            <th style={tableHeaderStyle}>Zone</th>
-            <th style={tableHeaderStyle}>Requested on</th>
-            <th style={tableHeaderStyle}>Status</th>
-            <th style={{ ...tableHeaderStyle, textAlign: "right" }}>Actions</th>
+          <tr
+            style={{
+              borderBottom:
+                "1px solid var(--gray-100)",
+            }}
+          >
+            {[
+              "Applicant",
+              "Email",
+              "Status",
+              "Requested",
+              "Actions",
+            ].map((item) => (
+              <th
+                key={item}
+                style={{
+                  textAlign:
+                    "left",
+
+                  padding:
+                    "1rem .75rem",
+
+                  ...labelStyle,
+                }}
+              >
+                {item}
+              </th>
+            ))}
           </tr>
         </thead>
-        <tbody>
-          {requests.map((request, index) => {
-            const isLast = index === requests.length - 1;
-            const tone = toneByStatus[request.status];
 
-            return (
-              <tr key={request.id}>
+        <tbody>
+          {requests.map(
+            (request) => (
+              <tr
+                key={request.id}
+                style={{
+                  borderBottom:
+                    "1px solid rgba(28,28,26,0.06)",
+                }}
+              >
                 <td
                   style={{
-                    ...cellStyle,
-                    borderBottom: isLast ? "none" : cellStyle.borderBottom,
+                    padding:
+                      "1rem .75rem",
                   }}
                 >
-                  <div style={{ display: "grid", gap: ".15rem" }}>
-                    <p style={{ fontWeight: 600, color: "var(--gray-900)" }}>
-                      {request.name}
-                    </p>
-                    <p style={{ fontSize: ".86rem", color: "var(--gray-600)" }}>
-                      {request.email}
+                  <div>
+                    <p
+                      style={{
+                        fontWeight: 600,
+
+                        color:
+                          "var(--gray-900)",
+
+                        marginBottom:
+                          ".2rem",
+                      }}
+                    >
+                      {
+                        request.user_name
+                      }
                     </p>
                   </div>
                 </td>
+
                 <td
                   style={{
-                    ...cellStyle,
-                    borderBottom: isLast ? "none" : cellStyle.borderBottom,
+                    padding:
+                      "1rem .75rem",
+
+                    color:
+                      "var(--gray-600)",
                   }}
                 >
-                  <RoleBadge role={request.requestedRole} />
+                  {
+                    request.user_email
+                  }
                 </td>
+
                 <td
                   style={{
-                    ...cellStyle,
-                    borderBottom: isLast ? "none" : cellStyle.borderBottom,
+                    padding:
+                      "1rem .75rem",
                   }}
                 >
-                  <p style={{ color: "var(--gray-900)", fontWeight: 500 }}>
-                    {request.zone}
-                  </p>
+                  <StatusPill
+                    status={
+                      request.status
+                    }
+                  />
                 </td>
+
                 <td
                   style={{
-                    ...cellStyle,
-                    borderBottom: isLast ? "none" : cellStyle.borderBottom,
+                    padding:
+                      "1rem .75rem",
+
+                    color:
+                      "var(--gray-600)",
+
+                    fontSize:
+                      ".9rem",
                   }}
                 >
-                  <p style={{ color: "var(--gray-600)", fontSize: ".88rem" }}>
-                    {formatDate(request.requestedAt)}
-                  </p>
+                  {formatDate(
+                    request.created_at
+                  )}
                 </td>
+
                 <td
                   style={{
-                    ...cellStyle,
-                    borderBottom: isLast ? "none" : cellStyle.borderBottom,
+                    padding:
+                      "1rem .75rem",
                   }}
                 >
-                  <StatusBadge status={tone.status} label={tone.label} />
-                </td>
-                <td
-                  style={{
-                    ...cellStyle,
-                    borderBottom: isLast ? "none" : cellStyle.borderBottom,
-                    textAlign: "right",
-                  }}
-                >
-                  {request.status === "pending" ? (
+                  {request.status ===
+                  "pending" ? (
                     <div
                       style={{
-                        display: "inline-flex",
+                        display:
+                          "flex",
+
                         gap: ".55rem",
-                        flexWrap: "wrap",
-                        justifyContent: "flex-end",
+
+                        flexWrap:
+                          "wrap",
                       }}
                     >
                       <button
-                        type="button"
-                        className="btn btn--secondary btn--sm"
-                        style={{ width: "auto" }}
-                        onClick={() => onApprove(request)}
+                        className="btn btn--primary btn--sm"
+                        onClick={() =>
+                          onApprove(
+                            request
+                          )
+                        }
                       >
                         Approve
                       </button>
+
                       <button
-                        type="button"
                         className="btn btn--ghost btn--sm"
-                        style={{ width: "auto" }}
-                        onClick={() => onReject(request)}
+                        onClick={() =>
+                          onReject(
+                            request
+                          )
+                        }
                       >
                         Reject
                       </button>
@@ -185,50 +256,103 @@ export function CompanyRequestsTable({
                   ) : (
                     <span
                       style={{
-                        color: "var(--gray-500)",
-                        fontSize: ".82rem",
-                        fontWeight: 600,
+                        color:
+                          "var(--gray-400)",
+
+                        fontSize:
+                          ".82rem",
                       }}
                     >
-                      Resolved
+                      Processed
                     </span>
                   )}
                 </td>
               </tr>
-            );
-          })}
+            )
+          )}
         </tbody>
       </table>
     </div>
   );
 }
 
-function RoleBadge({ role }: { role: CompanyJoinRequest["requestedRole"] }) {
-  const isAdmin = role === "company_admin";
+function StatusPill({
+  status,
+}: {
+  status:
+    | "pending"
+    | "approved"
+    | "rejected";
+}) {
+  const tones = {
+    pending: {
+      bg: "#fff7e6",
+      color:
+        "var(--warning)",
+      label: "Pending",
+    },
+
+    approved: {
+      bg: "var(--green-100)",
+      color:
+        "var(--green-800)",
+      label: "Approved",
+    },
+
+    rejected: {
+      bg: "#fdf2f2",
+      color:
+        "var(--error)",
+      label: "Rejected",
+    },
+  };
+
+  const tone =
+    tones[status];
 
   return (
     <span
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: ".32rem .65rem",
-        borderRadius: "999px",
-        background: isAdmin ? "var(--green-50)" : "var(--gray-100)",
-        color: isAdmin ? "var(--green-800)" : "var(--gray-600)",
-        fontSize: ".75rem",
+        display:
+          "inline-flex",
+
+        alignItems:
+          "center",
+
+        justifyContent:
+          "center",
+
+        padding:
+          ".38rem .7rem",
+
+        borderRadius:
+          "999px",
+
+        background:
+          tone.bg,
+
+        color: tone.color,
+
+        fontSize:
+          ".75rem",
+
         fontWeight: 600,
-        whiteSpace: "nowrap",
       }}
     >
-      {isAdmin ? "Company admin" : "Field user"}
+      {tone.label}
     </span>
   );
 }
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-  }).format(new Date(value));
+function formatDate(
+  value: string
+) {
+  return new Intl.DateTimeFormat(
+    "en",
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }
+  ).format(new Date(value));
 }
