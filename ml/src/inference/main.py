@@ -33,7 +33,7 @@ from mlflow.tracking import MlflowClient
 from PIL import Image
 from pydantic import BaseModel
 
-from cropsight.CropSight.merged_ml.src.preprocessing import get_inference_transforms
+from src.preprocessing.transforms import get_inference_transforms
 
 app = FastAPI(title="CropSight Inference API", version="1.0.0")
 

@@ -30,8 +30,8 @@ async def create_prediction(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    image_url = await S3Service().upload_image(file, str(current_user.id))
-    result = await InferenceService().predict(image_url)
+    image_bytes, image_url = await S3Service().upload_image(file, str(current_user.id))
+    result = await InferenceService().predict(image_bytes, file.content_type, crop)
 
     prediction = Prediction(
         user_id=current_user.id,
@@ -44,8 +44,13 @@ async def create_prediction(
     )
     db.add(prediction)
     await db.commit()
-    await db.refresh(prediction)
-    return prediction
+
+    result_q = await db.execute(
+        select(Prediction)
+        .options(selectinload(Prediction.feedback))
+        .where(Prediction.id == prediction.id)
+    )
+    return result_q.scalar_one()
 
 
 @router.get("/", response_model=PredictionListResponse)

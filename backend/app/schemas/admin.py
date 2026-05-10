@@ -32,6 +32,8 @@ class ModelMetricsResponse(BaseModel):
     f1_score: float
     per_class_metrics: List[PerClassMetric]
 
+    model_config = {"protected_namespaces": ()}
+
 
 class PredictionsByDay(BaseModel):
     date: date
