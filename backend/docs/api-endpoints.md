@@ -1,6 +1,7 @@
 # CropSight API — Endpoints
 
-**Base URL:** `http://localhost:8000/api/v1`  
+**Base URL local:** `http://localhost:8000/api/v1`  
+**Base URL staging:** `http://cropsight-dev-alb-193804761.us-east-1.elb.amazonaws.com/api/v1`  
 **Autenticación:** `Authorization: Bearer <access_token>` en todos los endpoints protegidos.  
 **Última validación:** 2026-05-09
 
@@ -10,10 +11,10 @@
 
 | Estado | Cantidad |
 |---|---|
-| ✅ Implementado y probado | 33 |
+| ✅ Implementado y probado | 31 |
 | ⚠️ Implementado (requiere servicio externo) | 3 |
 | ⏳ Pendiente | 1 |
-| **Total** | **37** |
+| **Total** | **35** |
 
 ---
 
@@ -24,7 +25,7 @@
 | 🔒 | Requiere `Authorization: Bearer <token>` |
 | 👑 | Requiere rol `super_admin` |
 | 🏢 | Requiere rol `company_admin` o `super_admin` |
-| ⚠️ | Requiere servicio externo (MLflow / GitHub) |
+| ⚠️ | Requiere servicio externo (MLflow · GitHub Actions · S3 · servicio de inferencia) |
 
 ---
 
@@ -488,7 +489,20 @@ curl "http://localhost:8000/api/v1/predictions/?page=1&limit=20" \
 **Respuesta `200`:**
 ```json
 {
-  "data": [{ "id":"uuid","label":"Tomato___Early_blight","confidence":0.94,"created_at":"...","feedback":null }],
+  "data": [
+    {
+      "id": "uuid",
+      "user_id": "uuid",
+      "company_id": null,
+      "image_url": "https://cropsight-dev-imgs.s3.us-east-1.amazonaws.com/...",
+      "label": "Tomato___Early_blight",
+      "confidence": 0.9423,
+      "class_probabilities": { "Tomato___Early_blight": 0.9423, "Tomato___healthy": 0.0577 },
+      "model_version": "3",
+      "feedback": null,
+      "created_at": "..."
+    }
+  ],
   "meta": { "total": 5, "page": 1, "limit": 20 }
 }
 ```
