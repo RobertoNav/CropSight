@@ -23,6 +23,9 @@ const valueStyle: React.CSSProperties = {
   color: "var(--gray-900)",
   fontWeight: 600,
   fontSize: ".92rem",
+  minWidth: 0,
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
 };
 
 export function CompanyRequestDecisionModal({
@@ -67,26 +70,30 @@ export function CompanyRequestDecisionModal({
         <div style={{ display: "grid", gap: ".95rem" }}>
           <p style={{ color: "var(--gray-600)", fontSize: ".94rem" }}>
             {isApprove
-              ? `Grant company access to ${request.name} and move the request out of the pending queue.`
-              : `Reject ${request.name}'s access request and keep the roster limited to confirmed members.`}
+              ? `Grant company access to ${request.user_name} and move the request out of the pending queue.`
+              : `Reject ${request.user_name}'s access request and keep the roster limited to confirmed members.`}
           </p>
 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
               gap: ".85rem",
             }}
           >
-            <DetailTile label="Applicant" value={request.name} />
+            <DetailTile label="Applicant" value={request.user_name} />
             <DetailTile
-              label="Requested role"
-              value={formatRole(request.requestedRole)}
+              label="Email"
+              value={request.user_email}
+              style={{ gridColumn: "1 / -1" }}
             />
-            <DetailTile label="Zone" value={request.zone} />
             <DetailTile
               label="Requested on"
-              value={formatDate(request.requestedAt)}
+              value={formatDateTime(request.created_at)}
+            />
+            <DetailTile
+              label="Current status"
+              value={formatStatus(request.status)}
             />
           </div>
         </div>
@@ -95,7 +102,15 @@ export function CompanyRequestDecisionModal({
   );
 }
 
-function DetailTile({ label, value }: { label: string; value: string }) {
+function DetailTile({
+  label,
+  value,
+  style,
+}: {
+  label: string;
+  value: string;
+  style?: React.CSSProperties;
+}) {
   return (
     <div
       style={{
@@ -105,6 +120,8 @@ function DetailTile({ label, value }: { label: string; value: string }) {
         border: "1px solid rgba(45,106,45,0.08)",
         display: "grid",
         gap: ".3rem",
+        minWidth: 0,
+        ...style,
       }}
     >
       <span style={labelStyle}>{label}</span>
@@ -113,13 +130,15 @@ function DetailTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-function formatRole(role: CompanyJoinRequest["requestedRole"]) {
-  return role === "company_admin" ? "Company admin" : "Field user";
+function formatStatus(status: CompanyJoinRequest["status"]) {
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-function formatDate(value: string) {
+function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en", {
     month: "short",
     day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(new Date(value));
 }

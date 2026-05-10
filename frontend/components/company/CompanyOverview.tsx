@@ -42,9 +42,12 @@ const toneByPriority = {
 
 export function CompanyOverview() {
   const summary = getCompanyOverviewSummary(companyAdminMock);
+  const metrics = companyAdminMock.metrics;
   const pendingRequests = companyAdminMock.requests.filter(
     (request) => request.status === "pending",
   );
+  const topLabel = metrics.top_labels[0]?.label;
+  const trackedDays = metrics.predictions_by_day.length;
   const priorityItems = [
     {
       id: "requests",
@@ -65,7 +68,9 @@ export function CompanyOverview() {
     {
       id: "health",
       label: "Crop health",
-      title: `Top label: ${companyAdminMock.metrics.topLabel}`,
+      title: topLabel
+        ? `Top label: ${formatMetricLabel(topLabel)}`
+        : "No detections in range",
       href: "/company/metrics",
       hrefLabel: "View metrics",
       tone: "success" as const,
@@ -95,7 +100,7 @@ export function CompanyOverview() {
         <SectionCard
           eyebrow="Company profile"
           title="Company snapshot"
-          description="A compact identity block with the essentials your admins need before moving into workflows."
+          description="A compact identity block sourced from the current company record, without relying on unsupported profile fields."
         >
           <div style={{ display: "grid", gap: "1.25rem" }}>
             <div
@@ -141,15 +146,17 @@ export function CompanyOverview() {
             >
               <InfoTile
                 label="Sector"
-                value={companyAdminMock.company.sector}
+                value={companyAdminMock.company.sector || "Not provided"}
               />
               <InfoTile
-                label="Region"
-                value={companyAdminMock.company.location}
+                label="Created"
+                value={formatDate(companyAdminMock.company.created_at)}
               />
               <InfoTile
-                label="Lead admin"
-                value={companyAdminMock.company.adminName}
+                label="Logo"
+                value={
+                  companyAdminMock.company.logo_url ? "Configured" : "Missing"
+                }
               />
             </div>
           </div>
@@ -217,7 +224,6 @@ export function CompanyOverview() {
                       className="link"
                       style={{
                         fontSize: ".82rem",
-                        color: "var(--gray-600)",
                         textDecoration: "none",
                       }}
                     >
@@ -226,7 +232,6 @@ export function CompanyOverview() {
                   </div>
                   <p
                     style={{
-                      fontWeight: 600,
                       color: "var(--gray-900)",
                       fontSize: "1rem",
                       letterSpacing: "-.01em",
@@ -263,19 +268,27 @@ export function CompanyOverview() {
           icon={<span style={{ fontSize: "1.1rem" }}>📥</span>}
         />
         <MetricCard
-          label="Predictions this week"
-          value={companyAdminMock.metrics.predictionsThisWeek}
-          sub="Captured by field users"
+          label="Predictions tracked"
+          value={metrics.total_predictions}
+          sub={
+            trackedDays === 1
+              ? "1 day in range"
+              : `${trackedDays} days in range`
+          }
           trend={{
-            label: `${companyAdminMock.metrics.weeklyGrowth}% vs last week`,
+            label: "Company activity",
             up: true,
           }}
           icon={<span style={{ fontSize: "1.1rem" }}>🌿</span>}
         />
         <MetricCard
           label="Feedback rate"
-          value={`${Math.round(companyAdminMock.metrics.feedbackRate * 100)}%`}
-          sub={`Top label: ${companyAdminMock.metrics.topLabel}`}
+          value={`${Math.round(metrics.feedback_rate * 100)}%`}
+          sub={
+            topLabel
+              ? `Top label: ${formatMetricLabel(topLabel)}`
+              : "No labels detected yet"
+          }
           trend={{ label: "Healthy review loop", up: true }}
           icon={<span style={{ fontSize: "1.1rem" }}>✅</span>}
         />
@@ -323,8 +336,8 @@ export function CompanyOverview() {
                 >
                   <RolePill role={member.role} />
                   <StatusBadge
-                    status={member.status === "active" ? "high" : "pending"}
-                    label={member.status === "active" ? "Active" : "Inactive"}
+                    status={member.is_active ? "high" : "pending"}
+                    label={member.is_active ? "Active" : "Inactive"}
                   />
                 </div>
               </div>
@@ -358,12 +371,12 @@ export function CompanyOverview() {
                   }}
                 >
                   <p style={{ fontWeight: 600, color: "var(--gray-900)" }}>
-                    {request.name}
+                    {request.user_name}
                   </p>
                   <StatusBadge status="pending" label="Pending" />
                 </div>
                 <p style={{ ...bodyTextStyle, fontSize: ".86rem" }}>
-                  {request.email}
+                  {request.user_email}
                 </p>
                 <p
                   style={{
@@ -372,7 +385,7 @@ export function CompanyOverview() {
                     marginTop: ".35rem",
                   }}
                 >
-                  Requested on {formatDate(request.requestedAt)}
+                  Requested on {formatDate(request.created_at)}
                 </p>
               </div>
             ))}
@@ -496,4 +509,8 @@ function formatDate(value: string) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function formatMetricLabel(value: string) {
+  return value.replaceAll("_", " ");
 }

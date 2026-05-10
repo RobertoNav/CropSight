@@ -84,9 +84,8 @@ export function CompanyRequestsTable({
         <thead>
           <tr>
             <th style={tableHeaderStyle}>Applicant</th>
-            <th style={tableHeaderStyle}>Requested role</th>
-            <th style={tableHeaderStyle}>Zone</th>
             <th style={tableHeaderStyle}>Requested on</th>
+            <th style={tableHeaderStyle}>Resolved on</th>
             <th style={tableHeaderStyle}>Status</th>
             <th style={{ ...tableHeaderStyle, textAlign: "right" }}>Actions</th>
           </tr>
@@ -106,10 +105,10 @@ export function CompanyRequestsTable({
                 >
                   <div style={{ display: "grid", gap: ".15rem" }}>
                     <p style={{ fontWeight: 600, color: "var(--gray-900)" }}>
-                      {request.name}
+                      {request.user_name}
                     </p>
                     <p style={{ fontSize: ".86rem", color: "var(--gray-600)" }}>
-                      {request.email}
+                      {request.user_email}
                     </p>
                   </div>
                 </td>
@@ -119,16 +118,8 @@ export function CompanyRequestsTable({
                     borderBottom: isLast ? "none" : cellStyle.borderBottom,
                   }}
                 >
-                  <RoleBadge role={request.requestedRole} />
-                </td>
-                <td
-                  style={{
-                    ...cellStyle,
-                    borderBottom: isLast ? "none" : cellStyle.borderBottom,
-                  }}
-                >
-                  <p style={{ color: "var(--gray-900)", fontWeight: 500 }}>
-                    {request.zone}
+                  <p style={{ color: "var(--gray-600)", fontSize: ".88rem" }}>
+                    {formatDateTime(request.created_at)}
                   </p>
                 </td>
                 <td
@@ -138,7 +129,9 @@ export function CompanyRequestsTable({
                   }}
                 >
                   <p style={{ color: "var(--gray-600)", fontSize: ".88rem" }}>
-                    {formatDate(request.requestedAt)}
+                    {request.resolved_at
+                      ? formatDateTime(request.resolved_at)
+                      : "-"}
                   </p>
                 </td>
                 <td
@@ -202,33 +195,11 @@ export function CompanyRequestsTable({
     </div>
   );
 }
-
-function RoleBadge({ role }: { role: CompanyJoinRequest["requestedRole"] }) {
-  const isAdmin = role === "company_admin";
-
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: ".32rem .65rem",
-        borderRadius: "999px",
-        background: isAdmin ? "var(--green-50)" : "var(--gray-100)",
-        color: isAdmin ? "var(--green-800)" : "var(--gray-600)",
-        fontSize: ".75rem",
-        fontWeight: 600,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {isAdmin ? "Company admin" : "Field user"}
-    </span>
-  );
-}
-
-function formatDate(value: string) {
+function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en", {
     month: "short",
     day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   }).format(new Date(value));
 }

@@ -5,8 +5,8 @@ import type { CompanyAdminMember } from "@/mocks/data/companyAdmin";
 
 interface CompanyUsersTableProps {
   users: CompanyAdminMember[];
-  onEditRole: (user: CompanyAdminMember) => void;
-  onToggleStatus: (user: CompanyAdminMember) => void;
+  currentAdminId: string | null;
+  onRemoveUser: (user: CompanyAdminMember) => void;
   onClearFilters: () => void;
   hasActiveFilters: boolean;
 }
@@ -30,8 +30,8 @@ const cellStyle: React.CSSProperties = {
 
 export function CompanyUsersTable({
   users,
-  onEditRole,
-  onToggleStatus,
+  currentAdminId,
+  onRemoveUser,
   onClearFilters,
   hasActiveFilters,
 }: CompanyUsersTableProps) {
@@ -80,14 +80,14 @@ export function CompanyUsersTable({
             <th style={tableHeaderStyle}>User</th>
             <th style={tableHeaderStyle}>Role</th>
             <th style={tableHeaderStyle}>Status</th>
-            <th style={tableHeaderStyle}>Zone</th>
-            <th style={tableHeaderStyle}>Last active</th>
+            <th style={tableHeaderStyle}>Joined</th>
             <th style={{ ...tableHeaderStyle, textAlign: "right" }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {users.map((user, index) => {
             const isLast = index === users.length - 1;
+            const isCurrentAdmin = user.id === currentAdminId;
 
             return (
               <tr key={user.id}>
@@ -121,8 +121,8 @@ export function CompanyUsersTable({
                   }}
                 >
                   <StatusBadge
-                    status={user.status === "active" ? "high" : "pending"}
-                    label={user.status === "active" ? "Active" : "Inactive"}
+                    status={user.is_active ? "high" : "pending"}
+                    label={user.is_active ? "Active" : "Inactive"}
                   />
                 </td>
                 <td
@@ -131,18 +131,8 @@ export function CompanyUsersTable({
                     borderBottom: isLast ? "none" : cellStyle.borderBottom,
                   }}
                 >
-                  <p style={{ color: "var(--gray-900)", fontWeight: 500 }}>
-                    {user.zone}
-                  </p>
-                </td>
-                <td
-                  style={{
-                    ...cellStyle,
-                    borderBottom: isLast ? "none" : cellStyle.borderBottom,
-                  }}
-                >
                   <p style={{ color: "var(--gray-600)", fontSize: ".88rem" }}>
-                    {formatDateTime(user.lastActiveAt)}
+                    {formatDate(user.created_at)}
                   </p>
                 </td>
                 <td
@@ -160,26 +150,33 @@ export function CompanyUsersTable({
                       justifyContent: "flex-end",
                     }}
                   >
-                    <button
-                      type="button"
-                      className="btn btn--ghost btn--sm"
-                      style={{ width: "auto" }}
-                      onClick={() => onEditRole(user)}
-                    >
-                      Edit role
-                    </button>
-                    <button
-                      type="button"
-                      className={
-                        user.status === "active"
-                          ? "btn btn--ghost btn--sm"
-                          : "btn btn--secondary btn--sm"
-                      }
-                      style={{ width: "auto" }}
-                      onClick={() => onToggleStatus(user)}
-                    >
-                      {user.status === "active" ? "Deactivate" : "Reactivate"}
-                    </button>
+                    {isCurrentAdmin ? (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: ".32rem .65rem",
+                          borderRadius: "999px",
+                          background: "var(--gray-100)",
+                          color: "var(--gray-600)",
+                          fontSize: ".75rem",
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Current admin
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn--ghost btn--sm"
+                        style={{ width: "auto" }}
+                        onClick={() => onRemoveUser(user)}
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -214,11 +211,10 @@ function RoleBadge({ role }: { role: CompanyAdminMember["role"] }) {
   );
 }
 
-function formatDateTime(value: string) {
+function formatDate(value: string) {
   return new Intl.DateTimeFormat("en", {
     month: "short",
     day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
+    year: "numeric",
   }).format(new Date(value));
 }

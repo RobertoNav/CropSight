@@ -10,11 +10,19 @@ import {
   companyAdminMock,
   type CompanyAdminMember,
   type MemberRole,
-  type MemberStatus,
 } from "@/mocks/data/companyAdmin";
 
 type RoleFilter = MemberRole | "all";
-type StatusFilter = MemberStatus | "all";
+type StatusFilter = "active" | "inactive" | "all";
+
+const currentAdminId =
+  companyAdminMock.users.find(
+    (user) =>
+      user.role === "company_admin" &&
+      user.company_id === companyAdminMock.company.id,
+  )?.id ??
+  companyAdminMock.users[0]?.id ??
+  null;
 
 const sectionCardStyle: React.CSSProperties = {
   background: "var(--white)",
@@ -35,6 +43,15 @@ const labelStyle: React.CSSProperties = {
 const bodyTextStyle: React.CSSProperties = {
   color: "var(--gray-600)",
   fontSize: ".92rem",
+};
+
+const detailValueStyle: React.CSSProperties = {
+  color: "var(--gray-900)",
+  fontWeight: 600,
+  fontSize: ".92rem",
+  minWidth: 0,
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
 };
 
 const toneByStatus = {
@@ -58,12 +75,8 @@ function CompanyUsersContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [roleModalUser, setRoleModalUser] = useState<CompanyAdminMember | null>(
-    null,
-  );
-  const [statusModalUser, setStatusModalUser] =
+  const [memberToRemove, setMemberToRemove] =
     useState<CompanyAdminMember | null>(null);
-  const [draftRole, setDraftRole] = useState<MemberRole>("user");
 
   const hasActiveFilters =
     searchTerm.trim().length > 0 ||
@@ -81,14 +94,15 @@ function CompanyUsersContent() {
 
       const matchesRole = roleFilter === "all" || user.role === roleFilter;
       const matchesStatus =
-        statusFilter === "all" || user.status === statusFilter;
+        statusFilter === "all" ||
+        (statusFilter === "active" ? user.is_active : !user.is_active);
 
       return matchesSearch && matchesRole && matchesStatus;
     });
   }, [users, searchTerm, roleFilter, statusFilter]);
 
   const summary = useMemo(() => {
-    const active = users.filter((user) => user.status === "active").length;
+    const active = users.filter((user) => user.is_active).length;
     const admins = users.filter((user) => user.role === "company_admin").length;
 
     return {
@@ -105,61 +119,30 @@ function CompanyUsersContent() {
     setStatusFilter("all");
   }
 
-  function openRoleModal(user: CompanyAdminMember) {
-    setRoleModalUser(user);
-    setDraftRole(user.role);
-  }
+  function confirmRemoveMember() {
+    if (!memberToRemove) return;
 
-  function saveRoleChange() {
-    if (!roleModalUser) return;
+    if (memberToRemove.id === currentAdminId) {
+      toast("The current company admin cannot remove themselves.", "warning");
+      setMemberToRemove(null);
+      return;
+    }
 
-    const nextRole = draftRole;
     setUsers((currentUsers) =>
-      currentUsers.map((user) =>
-        user.id === roleModalUser.id ? { ...user, role: nextRole } : user,
-      ),
+      currentUsers.filter((user) => user.id !== memberToRemove.id),
     );
     toast(
-      `${roleModalUser.name} is now ${nextRole === "company_admin" ? "a company admin" : "a field user"}.`,
+      `${memberToRemove.name} was removed from the company roster.`,
       "success",
     );
-    setRoleModalUser(null);
-  }
-
-  function confirmStatusChange() {
-    if (!statusModalUser) return;
-
-    const nextStatus: MemberStatus =
-      statusModalUser.status === "active" ? "inactive" : "active";
-    setUsers((currentUsers) =>
-      currentUsers.map((user) =>
-        user.id === statusModalUser.id
-          ? {
-              ...user,
-              status: nextStatus,
-              lastActiveAt:
-                nextStatus === "active"
-                  ? new Date().toISOString()
-                  : user.lastActiveAt,
-            }
-          : user,
-      ),
-    );
-
-    toast(
-      nextStatus === "active"
-        ? `${statusModalUser.name} has been reactivated.`
-        : `${statusModalUser.name} has been deactivated.`,
-      nextStatus === "active" ? "success" : "warning",
-    );
-    setStatusModalUser(null);
+    setMemberToRemove(null);
   }
 
   return (
     <CompanyShell
       activePath="/company/users"
       title="Company users"
-      description="Manage roles, access status, and the field team assigned to this company from a single clean roster view."
+      description="Review the current company roster, filter members quickly, and remove access when someone should no longer belong to this workspace."
       statusTone={toneByStatus[companyAdminMock.company.status]}
       statusLabel={
         companyAdminMock.company.status === "active"
@@ -169,23 +152,8 @@ function CompanyUsersContent() {
     >
       <PanelCard
         eyebrow="Directory"
-        title="Team management"
-        description="Filter the roster, review access, and keep the company structure aligned with current operations."
-        actions={
-          <button
-            type="button"
-            className="btn btn--primary btn--sm"
-            style={{ width: "auto" }}
-            onClick={() =>
-              toast(
-                "Invitation flow can be connected once the backend is ready.",
-                "info",
-              )
-            }
-          >
-            Invite member
-          </button>
-        }
+        title="Team roster"
+        description="Search by member identity, inspect company roles, and keep membership aligned with the backend roster contract."
       >
         <div style={{ display: "grid", gap: "1rem" }}>
           <div
@@ -267,22 +235,22 @@ function CompanyUsersContent() {
       <PanelCard
         eyebrow="Roster"
         title="Current members"
-        description="Use the table to adjust roles, review status, and keep the company roster up to date."
+        description="Use the table to review assigned members, confirm active status, and remove people who should no longer belong to the company."
       >
         <CompanyUsersTable
           users={filteredUsers}
-          onEditRole={openRoleModal}
-          onToggleStatus={setStatusModalUser}
+          currentAdminId={currentAdminId}
+          onRemoveUser={setMemberToRemove}
           onClearFilters={clearFilters}
           hasActiveFilters={hasActiveFilters}
         />
       </PanelCard>
 
       <Modal
-        open={roleModalUser !== null}
-        onClose={() => setRoleModalUser(null)}
+        open={memberToRemove !== null}
+        onClose={() => setMemberToRemove(null)}
         title={
-          roleModalUser ? `Edit role for ${roleModalUser.name}` : "Edit role"
+          memberToRemove ? `Remove ${memberToRemove.name}` : "Remove member"
         }
         size="sm"
         footer={
@@ -291,93 +259,60 @@ function CompanyUsersContent() {
               type="button"
               className="btn btn--ghost btn--sm"
               style={{ width: "auto" }}
-              onClick={() => setRoleModalUser(null)}
+              onClick={() => setMemberToRemove(null)}
             >
               Cancel
             </button>
             <button
               type="button"
-              className="btn btn--primary btn--sm"
+              className="btn btn--ghost btn--sm"
               style={{ width: "auto" }}
-              onClick={saveRoleChange}
+              onClick={confirmRemoveMember}
             >
-              Save role
+              Remove member
             </button>
           </>
         }
       >
-        <div style={{ display: "grid", gap: ".9rem" }}>
+        <div style={{ display: "grid", gap: ".95rem" }}>
           <p style={bodyTextStyle}>
-            Choose the level of access this person should have inside the
-            company workspace.
+            This will remove {memberToRemove?.name} from the company workspace.
+            The backend contract defines this as clearing the member from the
+            company roster, not editing their role or active flag from here.
           </p>
-          <div>
-            <label
-              htmlFor="member-role"
+
+          {memberToRemove ? (
+            <div
               style={{
-                ...labelStyle,
-                display: "block",
-                marginBottom: ".45rem",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                gap: ".85rem",
               }}
             >
-              Role
-            </label>
-            <select
-              id="member-role"
-              className="form-select"
-              value={draftRole}
-              onChange={(event) =>
-                setDraftRole(event.target.value as MemberRole)
-              }
-            >
-              <option value="company_admin">Company admin</option>
-              <option value="user">Field user</option>
-            </select>
-          </div>
-        </div>
-      </Modal>
+              <MemberDetailTile label="Member" value={memberToRemove.name} />
+              <MemberDetailTile
+                label="Role"
+                value={formatMemberRole(memberToRemove.role)}
+              />
+              <MemberDetailTile
+                label="Email"
+                value={memberToRemove.email}
+                style={{ gridColumn: "1 / -1" }}
+              />
+              <MemberDetailTile
+                label="Status"
+                value={memberToRemove.is_active ? "Active" : "Inactive"}
+              />
+              <MemberDetailTile
+                label="Joined"
+                value={formatJoinedDate(memberToRemove.created_at)}
+              />
+            </div>
+          ) : null}
 
-      <Modal
-        open={statusModalUser !== null}
-        onClose={() => setStatusModalUser(null)}
-        title={
-          statusModalUser?.status === "active"
-            ? "Deactivate member"
-            : "Reactivate member"
-        }
-        size="sm"
-        footer={
-          <>
-            <button
-              type="button"
-              className="btn btn--ghost btn--sm"
-              style={{ width: "auto" }}
-              onClick={() => setStatusModalUser(null)}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className={
-                statusModalUser?.status === "active"
-                  ? "btn btn--ghost btn--sm"
-                  : "btn btn--primary btn--sm"
-              }
-              style={{ width: "auto" }}
-              onClick={confirmStatusChange}
-            >
-              {statusModalUser?.status === "active"
-                ? "Deactivate"
-                : "Reactivate"}
-            </button>
-          </>
-        }
-      >
-        <div style={{ display: "grid", gap: ".8rem" }}>
-          <p style={bodyTextStyle}>
-            {statusModalUser?.status === "active"
-              ? `This will pause access for ${statusModalUser?.name} until you reactivate the account.`
-              : `This will restore access for ${statusModalUser?.name} and mark the member as active again.`}
+          <p style={{ ...bodyTextStyle, fontSize: ".86rem" }}>
+            Roles and activation status are read-only here because the current
+            company endpoints only support listing members and removing them.
           </p>
         </div>
       </Modal>
@@ -471,4 +406,44 @@ function SummaryChip({ label, value }: { label: string; value: number }) {
       </span>
     </div>
   );
+}
+
+function MemberDetailTile({
+  label,
+  value,
+  style,
+}: {
+  label: string;
+  value: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        borderRadius: "16px",
+        padding: ".85rem .9rem",
+        background: "rgba(244,250,244,0.6)",
+        border: "1px solid rgba(45,106,45,0.08)",
+        display: "grid",
+        gap: ".3rem",
+        minWidth: 0,
+        ...style,
+      }}
+    >
+      <span style={labelStyle}>{label}</span>
+      <span style={detailValueStyle}>{value}</span>
+    </div>
+  );
+}
+
+function formatMemberRole(role: MemberRole) {
+  return role === "company_admin" ? "Company admin" : "Field user";
+}
+
+function formatJoinedDate(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
 }
