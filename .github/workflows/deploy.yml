@@ -1,13 +1,6 @@
 name: Build and Publish Backend Image
 
 on:
-  push:
-    branches:
-      - main
-      - dev
-    paths:
-      - "backend/**"
-      - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
 env:
