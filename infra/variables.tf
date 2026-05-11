@@ -109,3 +109,15 @@ variable "github_token" {
   type        = string
   sensitive   = true
 }
+
+variable "inference_instance_type" {
+  description = "EC2 instance type for the ML inference service"
+  type        = string
+  default     = "t3.medium"
+}
+
+variable "inference_crops" {
+  description = "Comma-separated crops loadeds by inference service"
+  type        = string
+  default     = "tomato,potato,corn,grape"
+}
