@@ -106,6 +106,7 @@ resource "aws_ecr_lifecycle_policy" "backend" {
         description  = "Keep only the 30 most recent tagged images"
         selection = {
           tagStatus   = "tagged"
+          tagPatternList = ["*"]
           countType   = "imageCountMoreThan"
           countNumber = 30
         }

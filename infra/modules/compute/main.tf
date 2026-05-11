@@ -169,7 +169,7 @@ resource "aws_security_group" "lambda" {
 # --- MLflow Security Group ---
 resource "aws_security_group" "mlflow" {
   name        = "cropsight-${var.env}-sg-mlflow"
-  description = "Allow MLflow tracking server port from VPC"
+  description = "Allow MLflow tracking server port from EC2"
   vpc_id      = var.vpc_id
 
   ingress {
