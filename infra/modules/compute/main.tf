@@ -177,7 +177,7 @@ resource "aws_security_group" "mlflow" {
     from_port       = 5000
     to_port         = 5000
     protocol        = "tcp"
-    security_groups = [var.vpc_cidr]
+    cidr_blocks = [var.vpc_cidr]
   }
 
   egress {
@@ -365,16 +365,6 @@ fetch_ssm_parameter() {
   local parameter_name="$1"
   local parameter_value=""
 
-    [Service]
-    User=ec2-user
-    WorkingDirectory=/opt/app/backend
-    ExecStart=/usr/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
-    Restart=always
-    RestartSec=5
-    Environment=ENV=${var.env}
-    Environment=LAMBDA_INFERENCE_URL=${var.inference_service_url}
-
-
   until parameter_value=$(aws ssm get-parameter \
     --name "$parameter_name" \
     --query "Parameter.Value" \
@@ -414,11 +404,11 @@ if [ "${var.env}" = "prod" ]; then
 else
   IMAGE_TAG="${var.env}"
 fi
-IMAGE_URI="${var.ecr_repository_url}:${IMAGE_TAG}"
+IMAGE_URI="${var.ecr_repository_url}:$${IMAGE_TAG}"
 
 aws ecr get-login-password --region "${var.aws_region}" \
-  | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
-docker pull "${IMAGE_URI}"
+  | docker login --username AWS --password-stdin "$${ECR_REGISTRY}"
+docker pull "$${IMAGE_URI}" || true
 
 # Systemd service
 cat > /etc/systemd/system/cropsight.service << SERVICE
@@ -432,7 +422,7 @@ Restart=always
 RestartSec=5
 TimeoutStartSec=0
 ExecStartPre=-/usr/bin/docker rm -f cropsight-backend
-ExecStart=/usr/bin/docker run --name cropsight-backend --env-file /opt/cropsight/backend.env -p 8000:8000 ${IMAGE_URI}
+ExecStart=/usr/bin/docker run --name cropsight-backend --env-file /opt/cropsight/backend.env -p 8000:8000 $${IMAGE_URI}
 ExecStop=/usr/bin/docker stop cropsight-backend
 
 [Install]
