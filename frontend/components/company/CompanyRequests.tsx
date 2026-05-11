@@ -1,0 +1,829 @@
+// components/company/CompanyRequests.tsx
+
+"use client";
+
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import { CompanyRequestDecisionModal } from "@/components/company/CompanyRequestDecisionModal";
+
+import { CompanyRequestsTable } from "@/components/company/CompanyRequestsTable";
+
+import { CompanyShell } from "@/components/company/CompanyShell";
+
+import { InfoTooltip } from "@/components/company/InfoTooltip";
+
+import {
+  ToastProvider,
+  useToast,
+} from "@/components/ui/Toast";
+
+import {
+  getJoinRequests,
+  resolveJoinRequest,
+  type JoinRequest,
+} from "@/services/company.service";
+
+type RequestFilter =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "all";
+
+type DecisionType =
+  | "approve"
+  | "reject";
+
+const sectionCardStyle: React.CSSProperties =
+  {
+    background:
+      "var(--white)",
+
+    borderRadius:
+      "20px",
+
+    border:
+      "1px solid rgba(45,106,45,0.08)",
+
+    boxShadow:
+      "var(--shadow-card)",
+
+    padding:
+      "1.35rem",
+  };
+
+const labelStyle: React.CSSProperties =
+  {
+    fontSize:
+      ".75rem",
+
+    color:
+      "var(--gray-400)",
+
+    textTransform:
+      "uppercase",
+
+    letterSpacing:
+      ".08em",
+
+    fontWeight: 600,
+  };
+
+const bodyTextStyle: React.CSSProperties =
+  {
+    color:
+      "var(--gray-600)",
+
+    fontSize:
+      ".92rem",
+  };
+
+const requestPriority = {
+  pending: 0,
+  approved: 1,
+  rejected: 2,
+} as const;
+
+export function CompanyRequests() {
+  return (
+    <ToastProvider>
+      <CompanyRequestsContent />
+    </ToastProvider>
+  );
+}
+
+function CompanyRequestsContent() {
+  const toast =
+    useToast();
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [
+    processingDecision,
+    setProcessingDecision,
+  ] = useState(false);
+
+  const [requests, setRequests] =
+    useState<JoinRequest[]>([]);
+
+  const [searchTerm, setSearchTerm] =
+    useState("");
+
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] =
+    useState<RequestFilter>(
+      "all"
+    );
+
+  const [
+    selectedRequest,
+    setSelectedRequest,
+  ] =
+    useState<JoinRequest | null>(
+      null
+    );
+
+  const [
+    decisionType,
+    setDecisionType,
+  ] =
+    useState<DecisionType | null>(
+      null
+    );
+
+  useEffect(() => {
+    loadRequests();
+  }, []);
+
+  async function loadRequests() {
+    try {
+      setLoading(true);
+
+      const storedUser =
+        localStorage.getItem(
+          "user"
+        );
+
+      const parsedUser =
+        storedUser
+          ? JSON.parse(
+              storedUser
+            )
+          : null;
+
+      const companyId =
+        parsedUser?.company_id;
+
+      if (!companyId) {
+        toast(
+          "No company assigned.",
+          "warning"
+        );
+
+        return;
+      }
+
+      const data =
+        await getJoinRequests(
+          companyId
+        );
+
+      setRequests(
+        Array.isArray(data)
+          ? data
+          : []
+      );
+    } catch (error) {
+      console.error(error);
+
+      toast(
+        "Failed to load join requests.",
+        "error"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const hasActiveFilters =
+    searchTerm.trim().length >
+      0 ||
+    statusFilter !== "all";
+
+  const filteredRequests =
+    useMemo(() => {
+      const normalizedSearch =
+        searchTerm
+          .trim()
+          .toLowerCase();
+
+      return [...requests]
+        .filter(
+          (request) => {
+            const matchesSearch =
+              normalizedSearch.length ===
+                0 ||
+              (
+                request.user_name ||
+                ""
+              )
+                .toLowerCase()
+                .includes(
+                  normalizedSearch
+                ) ||
+              (
+                request.user_email ||
+                ""
+              )
+                .toLowerCase()
+                .includes(
+                  normalizedSearch
+                );
+
+            const matchesStatus =
+              statusFilter ===
+                "all" ||
+              request.status ===
+                statusFilter;
+
+            return (
+              matchesSearch &&
+              matchesStatus
+            );
+          }
+        )
+        .sort(
+          (
+            left,
+            right
+          ) => {
+            const priorityDifference =
+              requestPriority[
+                left.status
+              ] -
+              requestPriority[
+                right.status
+              ];
+
+            if (
+              priorityDifference !==
+              0
+            ) {
+              return priorityDifference;
+            }
+
+            return (
+              new Date(
+                right.created_at
+              ).getTime() -
+              new Date(
+                left.created_at
+              ).getTime()
+            );
+          }
+        );
+    }, [
+      requests,
+      searchTerm,
+      statusFilter,
+    ]);
+
+  const summary =
+    useMemo(() => {
+      const pending =
+        requests.filter(
+          (
+            request
+          ) =>
+            request.status ===
+            "pending"
+        ).length;
+
+      const approved =
+        requests.filter(
+          (
+            request
+          ) =>
+            request.status ===
+            "approved"
+        ).length;
+
+      return {
+        total:
+          requests.length,
+
+        pending,
+
+        approved,
+
+        rejected:
+          requests.length -
+          pending -
+          approved,
+      };
+    }, [requests]);
+
+  function clearFilters() {
+    setSearchTerm("");
+    setStatusFilter("all");
+  }
+
+  function openDecisionModal(
+    request: JoinRequest,
+    decision: DecisionType
+  ) {
+    setSelectedRequest(
+      request
+    );
+
+    setDecisionType(
+      decision
+    );
+  }
+
+  function closeDecisionModal() {
+    if (
+      processingDecision
+    )
+      return;
+
+    setSelectedRequest(
+      null
+    );
+
+    setDecisionType(
+      null
+    );
+  }
+
+  async function confirmDecision() {
+    if (
+      !selectedRequest ||
+      !decisionType
+    ) {
+      return;
+    }
+
+    try {
+      setProcessingDecision(
+        true
+      );
+
+      const storedUser =
+        localStorage.getItem(
+          "user"
+        );
+
+      const parsedUser =
+        storedUser
+          ? JSON.parse(
+              storedUser
+            )
+          : null;
+
+      const companyId =
+        parsedUser?.company_id;
+
+      if (!companyId) {
+        throw new Error(
+          "Company not found."
+        );
+      }
+
+      const updatedRequest =
+        await resolveJoinRequest(
+          companyId,
+          selectedRequest.id,
+          decisionType
+        );
+
+      setRequests(
+        (
+          currentRequests
+        ) =>
+          currentRequests.map(
+            (
+              request
+            ) =>
+              request.id ===
+              selectedRequest.id
+                ? updatedRequest
+                : request
+          )
+      );
+
+      toast(
+        decisionType ===
+          "approve"
+          ? `Request approved for ${selectedRequest.user_name}.`
+          : `Request rejected for ${selectedRequest.user_name}.`,
+        decisionType ===
+          "approve"
+          ? "success"
+          : "warning"
+      );
+
+      closeDecisionModal();
+    } catch (error) {
+      console.error(error);
+
+      toast(
+        "Failed to process request.",
+        "error"
+      );
+    } finally {
+      setProcessingDecision(
+        false
+      );
+    }
+  }
+
+  return (
+    <CompanyShell
+      activePath="/company/requests"
+      title="Join requests"
+      description="Review incoming access requests, keep the pending queue moving, and decide who should enter the company workspace."
+      statusTone="high"
+      statusLabel="Company active"
+    >
+      <PanelCard
+        eyebrow="Queue"
+        title="Review pipeline"
+        description="Search by applicant, focus on pending access, and keep the company onboarding queue clean."
+      >
+        <div
+          style={{
+            display:
+              "grid",
+
+            gap: "1rem",
+          }}
+        >
+          <div
+            style={{
+              display:
+                "grid",
+
+              gridTemplateColumns:
+                "minmax(220px, 1.3fr) minmax(180px, .7fr) auto",
+
+              gap:
+                ".85rem",
+            }}
+          >
+            <input
+              className="form-input"
+              type="search"
+              placeholder="Search by name or email"
+              value={
+                searchTerm
+              }
+              onChange={(
+                event
+              ) =>
+                setSearchTerm(
+                  event
+                    .target
+                    .value
+                )
+              }
+            />
+
+            <select
+              className="form-select"
+              value={
+                statusFilter
+              }
+              onChange={(
+                event
+              ) =>
+                setStatusFilter(
+                  event
+                    .target
+                    .value as RequestFilter
+                )
+              }
+            >
+              <option value="all">
+                All statuses
+              </option>
+
+              <option value="pending">
+                Pending
+              </option>
+
+              <option value="approved">
+                Approved
+              </option>
+
+              <option value="rejected">
+                Rejected
+              </option>
+            </select>
+
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              style={{
+                width:
+                  "auto",
+
+                alignSelf:
+                  "center",
+              }}
+              onClick={
+                clearFilters
+              }
+              disabled={
+                !hasActiveFilters
+              }
+            >
+              Clear
+            </button>
+          </div>
+
+          <div
+            style={{
+              display:
+                "flex",
+
+              alignItems:
+                "center",
+
+              justifyContent:
+                "space-between",
+
+              gap: "1rem",
+
+              flexWrap:
+                "wrap",
+            }}
+          >
+            <div
+              style={{
+                display:
+                  "flex",
+
+                flexWrap:
+                  "wrap",
+
+                gap:
+                  ".6rem",
+              }}
+            >
+              <SummaryChip
+                label="Requests"
+                value={
+                  summary.total
+                }
+              />
+
+              <SummaryChip
+                label="Pending"
+                value={
+                  summary.pending
+                }
+              />
+
+              <SummaryChip
+                label="Approved"
+                value={
+                  summary.approved
+                }
+              />
+
+              <SummaryChip
+                label="Rejected"
+                value={
+                  summary.rejected
+                }
+              />
+            </div>
+
+            <p
+              style={{
+                ...bodyTextStyle,
+
+                fontSize:
+                  ".84rem",
+              }}
+            >
+              {loading
+                ? "Loading requests..."
+                : `Showing ${filteredRequests.length} of ${requests.length} requests`}
+            </p>
+          </div>
+        </div>
+      </PanelCard>
+
+      <PanelCard
+        eyebrow="Requests"
+        title="Incoming access requests"
+        description="Resolve pending entries quickly while keeping the review history visible for the company team."
+      >
+        <CompanyRequestsTable
+          requests={
+            filteredRequests
+          }
+          onApprove={(
+            request
+          ) =>
+            openDecisionModal(
+              request,
+              "approve"
+            )
+          }
+          onReject={(
+            request
+          ) =>
+            openDecisionModal(
+              request,
+              "reject"
+            )
+          }
+          onClearFilters={
+            clearFilters
+          }
+          hasActiveFilters={
+            hasActiveFilters
+          }
+          loading={
+            loading
+          }
+        />
+      </PanelCard>
+
+      <CompanyRequestDecisionModal
+        open={
+          selectedRequest !==
+            null &&
+          decisionType !==
+            null
+        }
+        request={
+          selectedRequest
+        }
+        decision={
+          decisionType
+        }
+        onClose={
+          closeDecisionModal
+        }
+        onConfirm={
+          confirmDecision
+        }
+        loading={
+          processingDecision
+        }
+      />
+    </CompanyShell>
+  );
+}
+
+function PanelCard({
+  eyebrow,
+  title,
+  description,
+  children,
+}: {
+  eyebrow: string;
+
+  title: string;
+
+  description: string;
+
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      style={
+        sectionCardStyle
+      }
+    >
+      <div
+        style={{
+          marginBottom:
+            "1.15rem",
+
+          display:
+            "flex",
+
+          alignItems:
+            "flex-start",
+
+          justifyContent:
+            "space-between",
+
+          gap: "1rem",
+
+          flexWrap:
+            "wrap",
+        }}
+      >
+        <div>
+          <p
+            style={{
+              ...labelStyle,
+
+              color:
+                "var(--green-800)",
+
+              marginBottom:
+                ".45rem",
+            }}
+          >
+            {eyebrow}
+          </p>
+
+          <div
+            style={{
+              display:
+                "inline-flex",
+
+              alignItems:
+                "center",
+
+              gap:
+                ".55rem",
+            }}
+          >
+            <h2
+              style={{
+                fontFamily:
+                  "var(--font-display)",
+
+                fontSize:
+                  "1.45rem",
+
+                fontWeight: 400,
+
+                lineHeight:
+                  1.1,
+
+                letterSpacing:
+                  "-.02em",
+              }}
+            >
+              {title}
+            </h2>
+
+            <InfoTooltip
+              text={
+                description
+              }
+            />
+          </div>
+        </div>
+      </div>
+
+      {children}
+    </section>
+  );
+}
+
+function SummaryChip({
+  label,
+  value,
+}: {
+  label: string;
+
+  value: number;
+}) {
+  return (
+    <div
+      style={{
+        display:
+          "inline-flex",
+
+        alignItems:
+          "center",
+
+        gap:
+          ".45rem",
+
+        padding:
+          ".4rem .72rem",
+
+        borderRadius:
+          "999px",
+
+        background:
+          "var(--green-50)",
+
+        border:
+          "1px solid rgba(45,106,45,0.08)",
+      }}
+    >
+      <span
+        style={{
+          ...labelStyle,
+
+          color:
+            "var(--green-800)",
+
+          fontSize:
+            ".68rem",
+        }}
+      >
+        {label}
+      </span>
+
+      <span
+        style={{
+          fontWeight: 700,
+
+          color:
+            "var(--green-900)",
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
