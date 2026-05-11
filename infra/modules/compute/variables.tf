@@ -82,3 +82,13 @@ variable "github_token" {
   type        = string
   sensitive   = true
 }
+
+variable "vpc_cidr" {
+  description = "CIDR block for the VPC"
+  type        = string
+}
+
+variable "inference_service_url" {
+  description = "Base URL for the inference service, without /predict"
+  type        = string
+}

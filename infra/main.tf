@@ -21,6 +21,7 @@ module "compute" {
   env                   = var.env
   aws_region            = var.aws_region
   vpc_id                = module.networking.vpc_id
+  vpc_cidr              = var.vpc_cidr
   public_subnet_ids     = module.networking.public_subnet_ids
   private_subnet_ids    = module.networking.private_subnet_ids
   instance_type         = var.instance_type
@@ -34,6 +35,7 @@ module "compute" {
   mlflow_parameter_name = "/cropsight/${var.env}/mlflow/url"
   ecr_repository_url    = aws_ecr_repository.backend.repository_url
   github_token          = var.github_token
+  inference_service_url = "http://inference.cropsight-${var.env}.internal:8000"
 }
 
 module "database" {
@@ -113,4 +115,17 @@ resource "aws_ecr_lifecycle_policy" "backend" {
       }
     ]
   })
+}
+
+module "inference" {
+  source = "./modules/inference"
+
+  env                = var.env
+  vpc_id             = module.networking.vpc_id
+  vpc_cidr           = var.vpc_cidr
+  private_subnet_ids = module.networking.private_subnet_ids
+  instance_type      = var.inference_instance_type
+  mlflow_url         = module.mlops.mlflow_url
+  mlflow_bucket_arn  = module.storage.mlflow_bucket_arn
+  crops              = var.inference_crops
 }

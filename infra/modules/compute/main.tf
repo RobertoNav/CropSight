@@ -169,15 +169,15 @@ resource "aws_security_group" "lambda" {
 # --- MLflow Security Group ---
 resource "aws_security_group" "mlflow" {
   name        = "cropsight-${var.env}-sg-mlflow"
-  description = "Allow MLflow tracking server port from EC2"
+  description = "Allow MLflow tracking server port from VPC"
   vpc_id      = var.vpc_id
 
   ingress {
-    description     = "MLflow from EC2"
+    description     = "MLflow from VPC"
     from_port       = 5000
     to_port         = 5000
     protocol        = "tcp"
-    security_groups = [aws_security_group.ec2.id]
+    security_groups = [var.vpc_cidr]
   }
 
   egress {
@@ -365,6 +365,16 @@ fetch_ssm_parameter() {
   local parameter_name="$1"
   local parameter_value=""
 
+    [Service]
+    User=ec2-user
+    WorkingDirectory=/opt/app/backend
+    ExecStart=/usr/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
+    Restart=always
+    RestartSec=5
+    Environment=ENV=${var.env}
+    Environment=LAMBDA_INFERENCE_URL=${var.inference_service_url}
+
+
   until parameter_value=$(aws ssm get-parameter \
     --name "$parameter_name" \
     --query "Parameter.Value" \
@@ -388,7 +398,7 @@ REFRESH_TOKEN_EXPIRE_DAYS=7
 AWS_REGION=${var.aws_region}
 S3_BUCKET_IMAGES=cropsight-${var.env}-imgs
 S3_BUCKET_MODELS=cropsight-${var.env}-mlflow
-LAMBDA_INFERENCE_URL=http://localhost
+LAMBDA_INFERENCE_URL=${var.inference_service_url}
 MLFLOW_TRACKING_URI=$${MLFLOW_TRACKING_URI}
 MLFLOW_MODEL_NAME=cropsight-classifier
 GITHUB_TOKEN=${var.github_token}

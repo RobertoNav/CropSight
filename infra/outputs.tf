@@ -62,3 +62,8 @@ output "backend_ecr_repository_url" {
   description = "URL of the backend ECR repository"
   value       = aws_ecr_repository.backend.repository_url
 }
+
+output "inference_url" {
+  description = "Private base URL of the ML inference service"
+  value       = module.inference.inference_url
+}
