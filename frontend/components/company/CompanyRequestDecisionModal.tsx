@@ -17,13 +17,16 @@ interface CompanyRequestDecisionModalProps {
   onClose: () => void;
 
   onConfirm: () => void;
+
+  loading?: boolean;
 }
 
 const labelStyle: React.CSSProperties =
   {
     fontSize: ".72rem",
 
-    color: "var(--gray-400)",
+    color:
+      "var(--gray-400)",
 
     textTransform:
       "uppercase",
@@ -36,33 +39,44 @@ const labelStyle: React.CSSProperties =
 
 const valueStyle: React.CSSProperties =
   {
-    color: "var(--gray-900)",
+    color:
+      "var(--gray-900)",
 
     fontWeight: 600,
 
-    fontSize: ".92rem",
+    fontSize:
+      ".92rem",
+
+    wordBreak:
+      "break-word",
   };
 
-export function CompanyRequestDecisionModal(
-  {
-    open,
-    request,
-    decision,
-    onClose,
-    onConfirm,
-  }: CompanyRequestDecisionModalProps
-) {
+export function CompanyRequestDecisionModal({
+  open,
+  request,
+  decision,
+  onClose,
+  onConfirm,
+  loading = false,
+}: CompanyRequestDecisionModalProps) {
   const isApprove =
-    decision === "approve";
+    decision ===
+    "approve";
 
   return (
     <Modal
       open={
         open &&
-        request !== null &&
-        decision !== null
+        request !==
+          null &&
+        decision !==
+          null
       }
-      onClose={onClose}
+      onClose={
+        loading
+          ? () => {}
+          : onClose
+      }
       title={
         isApprove
           ? "Approve request"
@@ -75,9 +89,15 @@ export function CompanyRequestDecisionModal(
             type="button"
             className="btn btn--ghost btn--sm"
             style={{
-              width: "auto",
+              width:
+                "auto",
             }}
-            onClick={onClose}
+            onClick={
+              onClose
+            }
+            disabled={
+              loading
+            }
           >
             Cancel
           </button>
@@ -90,13 +110,23 @@ export function CompanyRequestDecisionModal(
                 : "btn btn--ghost btn--sm"
             }
             style={{
-              width: "auto",
+              width:
+                "auto",
             }}
-            onClick={onConfirm}
+            onClick={
+              onConfirm
+            }
+            disabled={
+              loading
+            }
           >
-            {isApprove
-              ? "Approve"
-              : "Reject"}
+            {loading
+              ? isApprove
+                ? "Approving..."
+                : "Rejecting..."
+              : isApprove
+                ? "Approve"
+                : "Reject"}
           </button>
         </>
       }
@@ -104,8 +134,11 @@ export function CompanyRequestDecisionModal(
       {request ? (
         <div
           style={{
-            display: "grid",
-            gap: ".95rem",
+            display:
+              "grid",
+
+            gap:
+              ".95rem",
           }}
         >
           <p
@@ -115,6 +148,9 @@ export function CompanyRequestDecisionModal(
 
               fontSize:
                 ".94rem",
+
+              lineHeight:
+                1.5,
             }}
           >
             {isApprove
@@ -124,35 +160,38 @@ export function CompanyRequestDecisionModal(
 
           <div
             style={{
-              display: "grid",
+              display:
+                "grid",
 
               gridTemplateColumns:
                 "repeat(2, minmax(0, 1fr))",
 
-              gap: ".85rem",
+              gap:
+                ".85rem",
             }}
           >
             <DetailTile
               label="Applicant"
               value={
-                request.user_name
+                request.user_name ||
+                "Unknown user"
               }
             />
 
             <DetailTile
               label="Email"
               value={
-                request.user_email
+                request.user_email ||
+                "No email"
               }
             />
 
             <DetailTile
               label="Status"
-              value={
-                capitalize(
-                  request.status
-                )
-              }
+              value={capitalize(
+                request.status ||
+                  "pending"
+              )}
             />
 
             <DetailTile
@@ -173,12 +212,14 @@ function DetailTile({
   value,
 }: {
   label: string;
+
   value: string;
 }) {
   return (
     <div
       style={{
-        borderRadius: "16px",
+        borderRadius:
+          "16px",
 
         padding:
           ".85rem .9rem",
@@ -189,16 +230,26 @@ function DetailTile({
         border:
           "1px solid rgba(45,106,45,0.08)",
 
-        display: "grid",
+        display:
+          "grid",
 
-        gap: ".3rem",
+        gap:
+          ".3rem",
       }}
     >
-      <span style={labelStyle}>
+      <span
+        style={
+          labelStyle
+        }
+      >
         {label}
       </span>
 
-      <span style={valueStyle}>
+      <span
+        style={
+          valueStyle
+        }
+      >
         {value}
       </span>
     </div>
@@ -206,23 +257,46 @@ function DetailTile({
 }
 
 function formatDate(
-  value: string
+  value?: string
 ) {
+  if (!value)
+    return "-";
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return value;
+  }
+
   return new Intl.DateTimeFormat(
     "en",
     {
-      month: "short",
+      month:
+        "short",
+
       day: "numeric",
-      year: "numeric",
+
+      year:
+        "numeric",
     }
-  ).format(new Date(value));
+  ).format(date);
 }
 
 function capitalize(
   value: string
 ) {
+  if (!value)
+    return "";
+
   return (
-    value.charAt(0).toUpperCase() +
+    value
+      .charAt(0)
+      .toUpperCase() +
     value.slice(1)
   );
 }

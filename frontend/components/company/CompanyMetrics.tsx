@@ -1,65 +1,119 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import { CompanyShell } from "@/components/company/CompanyShell";
+
 import { InfoTooltip } from "@/components/company/InfoTooltip";
+
 import { MetricCard } from "@/components/ui/MetricCard";
 
 import {
   getUsageMetrics,
 } from "@/services/admin.service";
 
-const sectionCardStyle: React.CSSProperties = {
-  background: "var(--white)",
-  borderRadius: "20px",
-  border: "1px solid rgba(45,106,45,0.08)",
-  boxShadow: "var(--shadow-card)",
-  padding: "1.35rem",
-};
+const sectionCardStyle: React.CSSProperties =
+  {
+    background:
+      "var(--white)",
 
-const labelStyle: React.CSSProperties = {
-  fontSize: ".75rem",
-  color: "var(--gray-400)",
-  textTransform: "uppercase",
-  letterSpacing: ".08em",
-  fontWeight: 600,
-};
+    borderRadius:
+      "20px",
 
-const bodyTextStyle: React.CSSProperties = {
-  color: "var(--gray-600)",
-  fontSize: ".92rem",
-};
+    border:
+      "1px solid rgba(45,106,45,0.08)",
+
+    boxShadow:
+      "var(--shadow-card)",
+
+    padding: "1.35rem",
+  };
+
+const labelStyle: React.CSSProperties =
+  {
+    fontSize: ".75rem",
+
+    color:
+      "var(--gray-400)",
+
+    textTransform:
+      "uppercase",
+
+    letterSpacing:
+      ".08em",
+
+    fontWeight: 600,
+  };
+
+const bodyTextStyle: React.CSSProperties =
+  {
+    color:
+      "var(--gray-600)",
+
+    fontSize:
+      ".92rem",
+  };
 
 const toneByTrend = {
   up: {
     bg: "rgba(74,143,74,0.1)",
-    color: "var(--green-900)",
+
+    color:
+      "var(--green-900)",
+
     label: "Up",
   },
 
   down: {
     bg: "rgba(209,63,63,0.1)",
-    color: "var(--error)",
+
+    color:
+      "var(--error)",
+
     label: "Down",
   },
 
   stable: {
     bg: "var(--gray-100)",
-    color: "var(--gray-600)",
+
+    color:
+      "var(--gray-600)",
+
     label: "Stable",
   },
 } as const;
 
+type TrendType =
+  | "up"
+  | "down"
+  | "stable";
+
 type MetricsState = {
   predictionsThisWeek: number;
+
   feedbackRate: number;
+
   activeUsers: number;
+
   activeCompanies: number;
+
   predictionsByDay: {
     date: string;
     count: number;
   }[];
+};
+
+type ZonePerformance = {
+  zone: string;
+
+  predictions: number;
+
+  feedbackRate: number;
+
+  trend: TrendType;
 };
 
 export function CompanyMetrics() {
@@ -69,91 +123,104 @@ export function CompanyMetrics() {
   const [metrics, setMetrics] =
     useState<MetricsState>({
       predictionsThisWeek: 0,
+
       feedbackRate: 0,
+
       activeUsers: 0,
+
       activeCompanies: 0,
+
       predictionsByDay: [],
     });
 
   useEffect(() => {
-    async function loadMetrics() {
-      try {
-        const data =
-          await getUsageMetrics();
-
-        setMetrics({
-          predictionsThisWeek:
-            data.total_predictions || 0,
-
-          feedbackRate:
-            data.feedback_rate || 0,
-
-          activeUsers:
-            data.active_users || 0,
-
-          activeCompanies:
-            data.active_companies || 0,
-
-          predictionsByDay:
-            data.predictions_by_day ||
-            [],
-        });
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     loadMetrics();
   }, []);
 
- const zonePerformance =
-  metrics.predictionsByDay.map(
-    (
-      item: {
-        date: string;
-        count: number;
-      },
-      index: number
-    ): {
-      zone: string;
-      predictions: number;
-      feedbackRate: number;
-      trend:
-        | "up"
-        | "down"
-        | "stable";
-    } => ({
-      zone: item.date,
-      predictions: item.count,
+  async function loadMetrics() {
+    try {
+      const data =
+        await getUsageMetrics();
 
-      feedbackRate:
-        metrics.feedbackRate,
+      setMetrics({
+        predictionsThisWeek:
+          data?.total_predictions ||
+          0,
 
-      trend:
-        index > 0 &&
-        item.count >
+        feedbackRate:
+          data?.feedback_rate ||
+          0,
+
+        activeUsers:
+          data?.active_users ||
+          0,
+
+        activeCompanies:
+          data?.active_companies ||
+          0,
+
+        predictionsByDay:
+          data?.predictions_by_day ||
+          [],
+      });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const zonePerformance: ZonePerformance[] =
+    metrics.predictionsByDay.map(
+      (
+        item,
+        index
+      ) => {
+        const previous =
           metrics
             .predictionsByDay[
             index - 1
-          ]?.count
-          ? "up"
-          : index > 0 &&
-              item.count <
-                metrics
-                  .predictionsByDay[
-                  index - 1
-                ]?.count
-            ? "down"
-            : "stable",
-    })
-  );
+          ];
+
+        let trend: TrendType =
+          "stable";
+
+        if (
+          previous &&
+          item.count >
+            previous.count
+        ) {
+          trend = "up";
+        } else if (
+          previous &&
+          item.count <
+            previous.count
+        ) {
+          trend = "down";
+        }
+
+        return {
+          zone:
+            formatDate(
+              item.date
+            ),
+
+          predictions:
+            item.count,
+
+          feedbackRate:
+            metrics.feedbackRate,
+
+          trend,
+        };
+      }
+    );
 
   const maxPredictions =
     Math.max(
       ...zonePerformance.map(
-        (z) => z.predictions
+        (item) =>
+          item.predictions
       ),
       1
     );
@@ -166,7 +233,6 @@ export function CompanyMetrics() {
       statusTone="high"
       statusLabel="Company active"
     >
-      {/* metrics */}
       <section
         style={{
           display: "grid",
@@ -220,7 +286,6 @@ export function CompanyMetrics() {
         />
       </section>
 
-      {/* sections */}
       <section
         style={{
           display: "grid",
@@ -230,10 +295,10 @@ export function CompanyMetrics() {
 
           gap: "1.5rem",
 
-          alignItems: "start",
+          alignItems:
+            "start",
         }}
       >
-        {/* performance */}
         <PanelCard
           eyebrow="Performance"
           title="Prediction activity"
@@ -242,13 +307,16 @@ export function CompanyMetrics() {
           <div
             style={{
               display: "grid",
+
               gap: "1rem",
             }}
           >
             {zonePerformance.map(
               (zone) => (
                 <ZonePerformanceRow
-                  key={zone.zone}
+                  key={
+                    zone.zone
+                  }
                   zone={zone}
                   maxPredictions={
                     maxPredictions
@@ -272,7 +340,6 @@ export function CompanyMetrics() {
           </div>
         </PanelCard>
 
-        {/* activity */}
         <PanelCard
           eyebrow="Signals"
           title="Operational summary"
@@ -281,6 +348,7 @@ export function CompanyMetrics() {
           <div
             style={{
               display: "grid",
+
               gap: ".9rem",
             }}
           >
@@ -320,26 +388,36 @@ function PanelCard({
   children,
 }: {
   eyebrow: string;
+
   title: string;
+
   description: string;
+
   children: React.ReactNode;
 }) {
   return (
-    <section style={sectionCardStyle}>
+    <section
+      style={
+        sectionCardStyle
+      }
+    >
       <div
         style={{
-          marginBottom: "1.15rem",
+          marginBottom:
+            "1.15rem",
 
           display: "flex",
 
-          alignItems: "flex-start",
+          alignItems:
+            "flex-start",
 
           justifyContent:
             "space-between",
 
           gap: "1rem",
 
-          flexWrap: "wrap",
+          flexWrap:
+            "wrap",
         }}
       >
         <div>
@@ -359,9 +437,11 @@ function PanelCard({
 
           <div
             style={{
-              display: "inline-flex",
+              display:
+                "inline-flex",
 
-              alignItems: "center",
+              alignItems:
+                "center",
 
               gap: ".55rem",
             }}
@@ -371,7 +451,8 @@ function PanelCard({
                 fontFamily:
                   "var(--font-display)",
 
-                fontSize: "1.45rem",
+                fontSize:
+                  "1.45rem",
 
                 fontWeight: 400,
 
@@ -385,7 +466,9 @@ function PanelCard({
             </h2>
 
             <InfoTooltip
-              text={description}
+              text={
+                description
+              }
             />
           </div>
         </div>
@@ -400,15 +483,7 @@ function ZonePerformanceRow({
   zone,
   maxPredictions,
 }: {
-  zone: {
-    zone: string;
-    predictions: number;
-    feedbackRate: number;
-    trend:
-      | "up"
-      | "down"
-      | "stable";
-  };
+  zone: ZonePerformance;
 
   maxPredictions: number;
 }) {
@@ -420,7 +495,9 @@ function ZonePerformanceRow({
   )}%`;
 
   const trendTone =
-    toneByTrend[zone.trend];
+    toneByTrend[
+      zone.trend
+    ];
 
   return (
     <article
@@ -429,7 +506,8 @@ function ZonePerformanceRow({
 
         gap: ".7rem",
 
-        paddingBottom: "1rem",
+        paddingBottom:
+          "1rem",
 
         borderBottom:
           "1px solid rgba(28,28,26,0.08)",
@@ -439,20 +517,23 @@ function ZonePerformanceRow({
         style={{
           display: "flex",
 
-          alignItems: "center",
+          alignItems:
+            "center",
 
           justifyContent:
             "space-between",
 
           gap: "1rem",
 
-          flexWrap: "wrap",
+          flexWrap:
+            "wrap",
         }}
       >
         <div>
           <p
             style={{
               fontWeight: 600,
+
               color:
                 "var(--gray-900)",
             }}
@@ -464,12 +545,16 @@ function ZonePerformanceRow({
             style={{
               ...bodyTextStyle,
 
-              fontSize: ".84rem",
+              fontSize:
+                ".84rem",
 
-              marginTop: ".2rem",
+              marginTop:
+                ".2rem",
             }}
           >
-            {zone.predictions}{" "}
+            {
+              zone.predictions
+            }{" "}
             predictions ·{" "}
             {formatPercent(
               zone.feedbackRate
@@ -479,8 +564,12 @@ function ZonePerformanceRow({
         </div>
 
         <TrendPill
-          trend={zone.trend}
-          label={trendTone.label}
+          trend={
+            zone.trend
+          }
+          label={
+            trendTone.label
+          }
         />
       </div>
 
@@ -488,12 +577,14 @@ function ZonePerformanceRow({
         style={{
           height: 10,
 
-          borderRadius: 999,
+          borderRadius:
+            999,
 
           background:
             "rgba(28,28,26,0.08)",
 
-          overflow: "hidden",
+          overflow:
+            "hidden",
         }}
       >
         <div
@@ -502,7 +593,8 @@ function ZonePerformanceRow({
 
             height: "100%",
 
-            borderRadius: 999,
+            borderRadius:
+              999,
 
             background:
               "linear-gradient(90deg, var(--green-700), var(--green-500))",
@@ -520,8 +612,11 @@ function ActivityItem({
   tone,
 }: {
   title: string;
+
   value: string;
+
   description: string;
+
   tone:
     | "success"
     | "warning"
@@ -530,31 +625,39 @@ function ActivityItem({
   const toneByActivity = {
     success: {
       bg: "rgba(74,143,74,0.1)",
+
       color:
         "var(--green-900)",
     },
 
     warning: {
       bg: "rgba(214,137,16,0.12)",
+
       color:
         "var(--warning)",
     },
 
     info: {
       bg: "rgba(26,68,128,0.1)",
-      color: "#1a4480",
+
+      color:
+        "#1a4480",
     },
   } as const;
 
   const current =
-    toneByActivity[tone];
+    toneByActivity[
+      tone
+    ];
 
   return (
     <article
       style={{
-        borderRadius: "18px",
+        borderRadius:
+          "18px",
 
-        padding: "1rem",
+        padding:
+          "1rem",
 
         border:
           "1px solid rgba(45,106,45,0.08)",
@@ -569,16 +672,19 @@ function ActivityItem({
     >
       <span
         style={{
-          display: "inline-flex",
+          display:
+            "inline-flex",
 
-          alignItems: "center",
+          alignItems:
+            "center",
 
           gap: ".45rem",
 
           padding:
             ".32rem .62rem",
 
-          borderRadius: 999,
+          borderRadius:
+            999,
 
           background:
             current.bg,
@@ -586,7 +692,8 @@ function ActivityItem({
           color:
             current.color,
 
-          fontSize: ".72rem",
+          fontSize:
+            ".72rem",
 
           fontWeight: 700,
 
@@ -596,7 +703,8 @@ function ActivityItem({
           textTransform:
             "uppercase",
 
-          width: "fit-content",
+          width:
+            "fit-content",
         }}
       >
         {value}
@@ -605,12 +713,14 @@ function ActivityItem({
       <div
         style={{
           display: "grid",
+
           gap: ".25rem",
         }}
       >
         <h3
           style={{
-            fontSize: "1rem",
+            fontSize:
+              "1rem",
 
             fontWeight: 600,
 
@@ -624,7 +734,9 @@ function ActivityItem({
         <p
           style={{
             ...bodyTextStyle,
-            fontSize: ".88rem",
+
+            fontSize:
+              ".88rem",
           }}
         >
           {description}
@@ -638,34 +750,40 @@ function TrendPill({
   trend,
   label,
 }: {
-  trend:
-    | "up"
-    | "down"
-    | "stable";
+  trend: TrendType;
 
   label: string;
 }) {
   const tone =
-    toneByTrend[trend];
+    toneByTrend[
+      trend
+    ];
 
   return (
     <span
       style={{
-        display: "inline-flex",
+        display:
+          "inline-flex",
 
-        alignItems: "center",
+        alignItems:
+          "center",
 
         gap: ".4rem",
 
-        padding: ".32rem .62rem",
+        padding:
+          ".32rem .62rem",
 
-        borderRadius: 999,
+        borderRadius:
+          999,
 
-        background: tone.bg,
+        background:
+          tone.bg,
 
-        color: tone.color,
+        color:
+          tone.color,
 
-        fontSize: ".74rem",
+        fontSize:
+          ".74rem",
 
         fontWeight: 700,
       }}
@@ -687,4 +805,28 @@ function formatPercent(
   return `${Math.round(
     value * 100
   )}%`;
+}
+
+function formatDate(
+  value: string
+) {
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(
+    "en",
+    {
+      month: "short",
+
+      day: "numeric",
+    }
+  ).format(date);
 }

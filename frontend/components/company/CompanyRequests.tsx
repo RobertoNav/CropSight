@@ -39,28 +39,46 @@ type DecisionType =
 
 const sectionCardStyle: React.CSSProperties =
   {
-    background: "var(--white)",
-    borderRadius: "20px",
+    background:
+      "var(--white)",
+
+    borderRadius:
+      "20px",
+
     border:
       "1px solid rgba(45,106,45,0.08)",
+
     boxShadow:
       "var(--shadow-card)",
-    padding: "1.35rem",
+
+    padding:
+      "1.35rem",
   };
 
 const labelStyle: React.CSSProperties =
   {
-    fontSize: ".75rem",
-    color: "var(--gray-400)",
-    textTransform: "uppercase",
-    letterSpacing: ".08em",
+    fontSize:
+      ".75rem",
+
+    color:
+      "var(--gray-400)",
+
+    textTransform:
+      "uppercase",
+
+    letterSpacing:
+      ".08em",
+
     fontWeight: 600,
   };
 
 const bodyTextStyle: React.CSSProperties =
   {
-    color: "var(--gray-600)",
-    fontSize: ".92rem",
+    color:
+      "var(--gray-600)",
+
+    fontSize:
+      ".92rem",
   };
 
 const requestPriority = {
@@ -78,10 +96,16 @@ export function CompanyRequests() {
 }
 
 function CompanyRequestsContent() {
-  const toast = useToast();
+  const toast =
+    useToast();
 
   const [loading, setLoading] =
     useState(true);
+
+  const [
+    processingDecision,
+    setProcessingDecision,
+  ] = useState(false);
 
   const [requests, setRequests] =
     useState<JoinRequest[]>([]);
@@ -89,44 +113,87 @@ function CompanyRequestsContent() {
   const [searchTerm, setSearchTerm] =
     useState("");
 
-  const [statusFilter, setStatusFilter] =
-    useState<RequestFilter>("all");
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] =
+    useState<RequestFilter>(
+      "all"
+    );
 
-  const [selectedRequest, setSelectedRequest] =
+  const [
+    selectedRequest,
+    setSelectedRequest,
+  ] =
     useState<JoinRequest | null>(
       null
     );
 
-  const [decisionType, setDecisionType] =
+  const [
+    decisionType,
+    setDecisionType,
+  ] =
     useState<DecisionType | null>(
       null
     );
 
-  /* TEMPORAL */
-  const companyId =
-    "YOUR_COMPANY_ID";
-
   useEffect(() => {
-    async function loadRequests() {
-      try {
-        const data =
-          await getJoinRequests(
-            companyId
-          );
-
-        setRequests(data || []);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     loadRequests();
   }, []);
 
+  async function loadRequests() {
+    try {
+      setLoading(true);
+
+      const storedUser =
+        localStorage.getItem(
+          "user"
+        );
+
+      const parsedUser =
+        storedUser
+          ? JSON.parse(
+              storedUser
+            )
+          : null;
+
+      const companyId =
+        parsedUser?.company_id;
+
+      if (!companyId) {
+        toast(
+          "No company assigned.",
+          "warning"
+        );
+
+        return;
+      }
+
+      const data =
+        await getJoinRequests(
+          companyId
+        );
+
+      setRequests(
+        Array.isArray(data)
+          ? data
+          : []
+      );
+    } catch (error) {
+      console.error(error);
+
+      toast(
+        "Failed to load join requests.",
+        "error"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const hasActiveFilters =
-    searchTerm.trim().length > 0 ||
+    searchTerm.trim().length >
+      0 ||
     statusFilter !== "all";
 
   const filteredRequests =
@@ -137,86 +204,110 @@ function CompanyRequestsContent() {
           .toLowerCase();
 
       return [...requests]
-        .filter((request) => {
-          const matchesSearch =
-            normalizedSearch.length ===
-              0 ||
-            request.user_name
-              .toLowerCase()
-              .includes(
-                normalizedSearch
-              ) ||
-            request.user_email
-              .toLowerCase()
-              .includes(
-                normalizedSearch
-              );
+        .filter(
+          (request) => {
+            const matchesSearch =
+              normalizedSearch.length ===
+                0 ||
+              (
+                request.user_name ||
+                ""
+              )
+                .toLowerCase()
+                .includes(
+                  normalizedSearch
+                ) ||
+              (
+                request.user_email ||
+                ""
+              )
+                .toLowerCase()
+                .includes(
+                  normalizedSearch
+                );
 
-          const matchesStatus =
-            statusFilter ===
-              "all" ||
-            request.status ===
-              statusFilter;
+            const matchesStatus =
+              statusFilter ===
+                "all" ||
+              request.status ===
+                statusFilter;
 
-          return (
-            matchesSearch &&
-            matchesStatus
-          );
-        })
-        .sort((left, right) => {
-          const priorityDifference =
-            requestPriority[
-              left.status
-            ] -
-            requestPriority[
-              right.status
-            ];
+            return (
+              matchesSearch &&
+              matchesStatus
+            );
+          }
+        )
+        .sort(
+          (
+            left,
+            right
+          ) => {
+            const priorityDifference =
+              requestPriority[
+                left.status
+              ] -
+              requestPriority[
+                right.status
+              ];
 
-          if (
-            priorityDifference !== 0
-          )
-            return priorityDifference;
+            if (
+              priorityDifference !==
+              0
+            ) {
+              return priorityDifference;
+            }
 
-          return (
-            new Date(
-              right.created_at
-            ).getTime() -
-            new Date(
-              left.created_at
-            ).getTime()
-          );
-        });
+            return (
+              new Date(
+                right.created_at
+              ).getTime() -
+              new Date(
+                left.created_at
+              ).getTime()
+            );
+          }
+        );
     }, [
       requests,
       searchTerm,
       statusFilter,
     ]);
 
-  const summary = useMemo(() => {
-    const pending =
-      requests.filter(
-        (request) =>
-          request.status ===
-          "pending"
-      ).length;
+  const summary =
+    useMemo(() => {
+      const pending =
+        requests.filter(
+          (
+            request
+          ) =>
+            request.status ===
+            "pending"
+        ).length;
 
-    const approved =
-      requests.filter(
-        (request) =>
-          request.status ===
-          "approved"
-      ).length;
+      const approved =
+        requests.filter(
+          (
+            request
+          ) =>
+            request.status ===
+            "approved"
+        ).length;
 
-    return {
-      total: requests.length,
-      pending,
-      approved,
-      rejected:
-        requests.length -
-        pending -
+      return {
+        total:
+          requests.length,
+
+        pending,
+
         approved,
-    };
-  }, [requests]);
+
+        rejected:
+          requests.length -
+          pending -
+          approved,
+      };
+    }, [requests]);
 
   function clearFilters() {
     setSearchTerm("");
@@ -227,25 +318,64 @@ function CompanyRequestsContent() {
     request: JoinRequest,
     decision: DecisionType
   ) {
-    setSelectedRequest(request);
+    setSelectedRequest(
+      request
+    );
 
-    setDecisionType(decision);
+    setDecisionType(
+      decision
+    );
   }
 
   function closeDecisionModal() {
-    setSelectedRequest(null);
+    if (
+      processingDecision
+    )
+      return;
 
-    setDecisionType(null);
+    setSelectedRequest(
+      null
+    );
+
+    setDecisionType(
+      null
+    );
   }
 
   async function confirmDecision() {
     if (
       !selectedRequest ||
       !decisionType
-    )
+    ) {
       return;
+    }
 
     try {
+      setProcessingDecision(
+        true
+      );
+
+      const storedUser =
+        localStorage.getItem(
+          "user"
+        );
+
+      const parsedUser =
+        storedUser
+          ? JSON.parse(
+              storedUser
+            )
+          : null;
+
+      const companyId =
+        parsedUser?.company_id;
+
+      if (!companyId) {
+        throw new Error(
+          "Company not found."
+        );
+      }
+
       const updatedRequest =
         await resolveJoinRequest(
           companyId,
@@ -254,9 +384,13 @@ function CompanyRequestsContent() {
         );
 
       setRequests(
-        (currentRequests) =>
+        (
+          currentRequests
+        ) =>
           currentRequests.map(
-            (request) =>
+            (
+              request
+            ) =>
               request.id ===
               selectedRequest.id
                 ? updatedRequest
@@ -283,6 +417,10 @@ function CompanyRequestsContent() {
         "Failed to process request.",
         "error"
       );
+    } finally {
+      setProcessingDecision(
+        false
+      );
     }
   }
 
@@ -301,38 +439,53 @@ function CompanyRequestsContent() {
       >
         <div
           style={{
-            display: "grid",
+            display:
+              "grid",
+
             gap: "1rem",
           }}
         >
           <div
             style={{
-              display: "grid",
+              display:
+                "grid",
 
               gridTemplateColumns:
                 "minmax(220px, 1.3fr) minmax(180px, .7fr) auto",
 
-              gap: ".85rem",
+              gap:
+                ".85rem",
             }}
           >
             <input
               className="form-input"
               type="search"
               placeholder="Search by name or email"
-              value={searchTerm}
-              onChange={(event) =>
+              value={
+                searchTerm
+              }
+              onChange={(
+                event
+              ) =>
                 setSearchTerm(
-                  event.target.value
+                  event
+                    .target
+                    .value
                 )
               }
             />
 
             <select
               className="form-select"
-              value={statusFilter}
-              onChange={(event) =>
+              value={
+                statusFilter
+              }
+              onChange={(
+                event
+              ) =>
                 setStatusFilter(
-                  event.target
+                  event
+                    .target
                     .value as RequestFilter
                 )
               }
@@ -358,7 +511,9 @@ function CompanyRequestsContent() {
               type="button"
               className="btn btn--ghost btn--sm"
               style={{
-                width: "auto",
+                width:
+                  "auto",
+
                 alignSelf:
                   "center",
               }}
@@ -375,7 +530,8 @@ function CompanyRequestsContent() {
 
           <div
             style={{
-              display: "flex",
+              display:
+                "flex",
 
               alignItems:
                 "center",
@@ -385,16 +541,20 @@ function CompanyRequestsContent() {
 
               gap: "1rem",
 
-              flexWrap: "wrap",
+              flexWrap:
+                "wrap",
             }}
           >
             <div
               style={{
-                display: "flex",
+                display:
+                  "flex",
 
-                flexWrap: "wrap",
+                flexWrap:
+                  "wrap",
 
-                gap: ".6rem",
+                gap:
+                  ".6rem",
               }}
             >
               <SummaryChip
@@ -429,16 +589,14 @@ function CompanyRequestsContent() {
             <p
               style={{
                 ...bodyTextStyle,
-                fontSize: ".84rem",
+
+                fontSize:
+                  ".84rem",
               }}
             >
-              Showing{" "}
-              {
-                filteredRequests.length
-              }{" "}
-              of{" "}
-              {requests.length}{" "}
-              requests
+              {loading
+                ? "Loading requests..."
+                : `Showing ${filteredRequests.length} of ${requests.length} requests`}
             </p>
           </div>
         </div>
@@ -475,7 +633,9 @@ function CompanyRequestsContent() {
           hasActiveFilters={
             hasActiveFilters
           }
-          loading={loading}
+          loading={
+            loading
+          }
         />
       </PanelCard>
 
@@ -483,7 +643,8 @@ function CompanyRequestsContent() {
         open={
           selectedRequest !==
             null &&
-          decisionType !== null
+          decisionType !==
+            null
         }
         request={
           selectedRequest
@@ -497,6 +658,9 @@ function CompanyRequestsContent() {
         onConfirm={
           confirmDecision
         }
+        loading={
+          processingDecision
+        }
       />
     </CompanyShell>
   );
@@ -509,19 +673,26 @@ function PanelCard({
   children,
 }: {
   eyebrow: string;
+
   title: string;
+
   description: string;
+
   children: React.ReactNode;
 }) {
   return (
     <section
-      style={sectionCardStyle}
+      style={
+        sectionCardStyle
+      }
     >
       <div
         style={{
-          marginBottom: "1.15rem",
+          marginBottom:
+            "1.15rem",
 
-          display: "flex",
+          display:
+            "flex",
 
           alignItems:
             "flex-start",
@@ -531,7 +702,8 @@ function PanelCard({
 
           gap: "1rem",
 
-          flexWrap: "wrap",
+          flexWrap:
+            "wrap",
         }}
       >
         <div>
@@ -557,7 +729,8 @@ function PanelCard({
               alignItems:
                 "center",
 
-              gap: ".55rem",
+              gap:
+                ".55rem",
             }}
           >
             <h2
@@ -570,7 +743,8 @@ function PanelCard({
 
                 fontWeight: 400,
 
-                lineHeight: 1.1,
+                lineHeight:
+                  1.1,
 
                 letterSpacing:
                   "-.02em",
@@ -598,6 +772,7 @@ function SummaryChip({
   value,
 }: {
   label: string;
+
   value: number;
 }) {
   return (
@@ -609,7 +784,8 @@ function SummaryChip({
         alignItems:
           "center",
 
-        gap: ".45rem",
+        gap:
+          ".45rem",
 
         padding:
           ".4rem .72rem",

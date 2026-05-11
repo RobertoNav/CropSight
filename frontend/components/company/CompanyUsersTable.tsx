@@ -109,8 +109,7 @@ export function CompanyUsersTable({
               "var(--gray-900)",
           }}
         >
-          No members match the
-          current filters.
+          No members found.
         </p>
 
         <p
@@ -122,10 +121,9 @@ export function CompanyUsersTable({
               ".92rem",
           }}
         >
-          Try broadening the
-          search or clear filters
-          to see the full company
-          roster again.
+          {hasActiveFilters
+            ? "Try adjusting your filters or search."
+            : "This company does not have users yet."}
         </p>
 
         {hasActiveFilters ? (
@@ -242,7 +240,7 @@ export function CompanyUsersTable({
                       borderBottom:
                         isLast
                           ? "none"
-                          : cellStyle.borderBottom,
+                          : "1px solid var(--gray-100)",
                     }}
                   >
                     <div
@@ -289,7 +287,7 @@ export function CompanyUsersTable({
                       borderBottom:
                         isLast
                           ? "none"
-                          : cellStyle.borderBottom,
+                          : "1px solid var(--gray-100)",
                     }}
                   >
                     <RoleBadge
@@ -306,7 +304,7 @@ export function CompanyUsersTable({
                       borderBottom:
                         isLast
                           ? "none"
-                          : cellStyle.borderBottom,
+                          : "1px solid var(--gray-100)",
                     }}
                   >
                     <StatusBadge
@@ -332,7 +330,7 @@ export function CompanyUsersTable({
                       borderBottom:
                         isLast
                           ? "none"
-                          : cellStyle.borderBottom,
+                          : "1px solid var(--gray-100)",
                     }}
                   >
                     <p
@@ -343,9 +341,8 @@ export function CompanyUsersTable({
                         fontWeight: 500,
                       }}
                     >
-                      {
-                        user.zone
-                      }
+                      {user.zone ||
+                        "Unassigned"}
                     </p>
                   </td>
 
@@ -356,7 +353,7 @@ export function CompanyUsersTable({
                       borderBottom:
                         isLast
                           ? "none"
-                          : cellStyle.borderBottom,
+                          : "1px solid var(--gray-100)",
                     }}
                   >
                     <p
@@ -381,7 +378,7 @@ export function CompanyUsersTable({
                       borderBottom:
                         isLast
                           ? "none"
-                          : cellStyle.borderBottom,
+                          : "1px solid var(--gray-100)",
 
                       textAlign:
                         "right",
@@ -437,8 +434,8 @@ export function CompanyUsersTable({
                       >
                         {user.status ===
                         "active"
-                          ? "Deactivate"
-                          : "Reactivate"}
+                          ? "Remove"
+                          : "Restore"}
                       </button>
                     </div>
                   </td>
@@ -506,8 +503,22 @@ function RoleBadge({
 }
 
 function formatDateTime(
-  value: string
+  value?: string
 ) {
+  if (!value)
+    return "Never";
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return "Invalid date";
+  }
+
   return new Intl.DateTimeFormat(
     "en",
     {
@@ -515,11 +526,11 @@ function formatDateTime(
 
       day: "numeric",
 
+      year: "numeric",
+
       hour: "numeric",
 
       minute: "2-digit",
     }
-  ).format(
-    new Date(value)
-  );
+  ).format(date);
 }

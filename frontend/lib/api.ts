@@ -14,19 +14,21 @@ export const api = axios.create({
    REQUEST INTERCEPTOR
 ───────────────────────────────────────────── */
 
-api.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
+api.interceptors.request.use(
+  (config) => {
     const token =
-      localStorage.getItem("access_token");
+      localStorage.getItem(
+        "access_token"
+      );
 
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization =
+        `Bearer ${token}`;
     }
+
+    return config;
   }
-
-  return config;
-});
-
+);
 /* ─────────────────────────────────────────────
    RESPONSE INTERCEPTOR
 ───────────────────────────────────────────── */

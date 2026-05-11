@@ -103,18 +103,14 @@ export function InfoTooltip({
           position:
             "absolute",
 
-          left:
-            "calc(100% + .55rem)",
+          top: "calc(100% + .6rem)",
 
-          top: "50%",
+          left: "50%",
 
           transform:
             visible
-              ? "translateY(-50%) scale(1)"
-              : "translateY(-50%) scale(.98)",
-
-          transformOrigin:
-            "left center",
+              ? "translateX(-50%) scale(1)"
+              : "translateX(-50%) scale(.96)",
 
           minWidth: 220,
 
@@ -156,13 +152,34 @@ export function InfoTooltip({
           transition:
             "opacity .15s ease, transform .15s ease, visibility .15s ease",
 
-          zIndex: 20,
+          zIndex: 999,
 
           whiteSpace:
             "normal",
         }}
       >
         {text}
+
+        <span
+          style={{
+            position:
+              "absolute",
+
+            top: -6,
+
+            left: "50%",
+
+            transform:
+              "translateX(-50%) rotate(45deg)",
+
+            width: 12,
+
+            height: 12,
+
+            background:
+              "var(--gray-900)",
+          }}
+        />
       </span>
     </span>
   );

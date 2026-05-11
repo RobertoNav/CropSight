@@ -36,6 +36,7 @@ export interface CompanyUser {
   id: string;
   name: string;
   email: string;
+
   role:
     | "user"
     | "company_admin"
@@ -56,14 +57,14 @@ export async function getCompanies(params?: {
   search?: string;
   status?: "active" | "suspended";
 }): Promise<CompanyListResponse> {
-  const response = await api.get(
+  const { data } = await api.get(
     "/companies",
     {
       params,
     }
   );
 
-  return response.data;
+  return data;
 }
 
 /* ───────────────── GET COMPANY BY ID ───────────────── */
@@ -71,58 +72,61 @@ export async function getCompanies(params?: {
 export async function getCompanyById(
   companyId: string
 ): Promise<Company> {
-  const response = await api.get(
+  const { data } = await api.get(
     `/companies/${companyId}`
   );
 
-  return response.data;
+  return data;
 }
 
 /* ───────────────── CREATE COMPANY ───────────────── */
 
-export async function createCompany(data: {
+export async function createCompany(payload: {
   name: string;
   sector: string;
   logo_url?: string | null;
 }): Promise<Company> {
-  const response = await api.post(
+  const { data } = await api.post(
     "/companies",
-    data
+    payload
   );
 
-  return response.data;
+  return data;
 }
 
 /* ───────────────── UPDATE COMPANY ───────────────── */
 
 export async function updateCompany(
   companyId: string,
-  data: {
+  payload: {
     name?: string;
+    sector?: string;
     logo_url?: string | null;
   }
 ): Promise<Company> {
-  const response = await api.put(
+  const { data } = await api.put(
     `/companies/${companyId}`,
-    data
+    payload
   );
 
-  return response.data;
+  return data;
 }
 
 /* ───────────────── SEARCH COMPANIES ───────────────── */
 
 export async function searchCompanies(
-  name: string
+  query: string
 ): Promise<Company[]> {
-  const response = await api.get(
+  const { data } = await api.get(
     "/companies/search",
     {
-      params: { name },
+      params: {
+        query,
+      },
     }
   );
 
-  return response.data;
+  return data;
 }
 
 /* ───────────────── JOIN COMPANY ───────────────── */
@@ -130,14 +134,14 @@ export async function searchCompanies(
 export async function joinCompany(
   companyId: string
 ): Promise<JoinRequest> {
-  const response = await api.post(
+  const { data } = await api.post(
     "/companies/join",
     {
       company_id: companyId,
     }
   );
 
-  return response.data;
+  return data;
 }
 
 /* ───────────────── GET JOIN REQUESTS ───────────────── */
@@ -146,14 +150,16 @@ export async function getJoinRequests(
   companyId: string,
   status?: "pending" | "approved" | "rejected"
 ): Promise<JoinRequest[]> {
-  const response = await api.get(
+  const { data } = await api.get(
     `/companies/${companyId}/requests`,
     {
-      params: { status },
+      params: {
+        status,
+      },
     }
   );
 
-  return response.data;
+  return data;
 }
 
 /* ───────────────── RESOLVE JOIN REQUEST ───────────────── */
@@ -163,14 +169,14 @@ export async function resolveJoinRequest(
   requestId: string,
   action: "approve" | "reject"
 ): Promise<JoinRequest> {
-  const response = await api.put(
+  const { data } = await api.put(
     `/companies/${companyId}/requests/${requestId}`,
     {
       action,
     }
   );
 
-  return response.data;
+  return data;
 }
 
 /* ───────────────── COMPANY USERS ───────────────── */
@@ -178,11 +184,11 @@ export async function resolveJoinRequest(
 export async function getCompanyUsers(
   companyId: string
 ): Promise<CompanyUser[]> {
-  const response = await api.get(
+  const { data } = await api.get(
     `/companies/${companyId}/users`
   );
 
-  return response.data;
+  return data;
 }
 
 export async function removeCompanyUser(
@@ -194,18 +200,18 @@ export async function removeCompanyUser(
   );
 }
 
-/* ───────────────── UPDATE STATUS ───────────────── */
+/* ───────────────── UPDATE COMPANY STATUS ───────────────── */
 
 export async function updateCompanyStatus(
   companyId: string,
   status: "active" | "suspended"
 ): Promise<Company> {
-  const response = await api.put(
+  const { data } = await api.put(
     `/companies/${companyId}/status`,
     {
       status,
     }
   );
 
-  return response.data;
+  return data;
 }

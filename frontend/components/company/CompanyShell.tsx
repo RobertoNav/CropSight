@@ -77,13 +77,25 @@ export function CompanyShell({
       null
     );
 
-  /* TEMPORAL */
-  const companyId =
-    "YOUR_COMPANY_ID";
-
   useEffect(() => {
     async function loadCompany() {
       try {
+        const user =
+          localStorage.getItem(
+            "user"
+          );
+
+        const parsedUser = user
+          ? JSON.parse(user)
+          : null;
+
+        const companyId =
+          parsedUser?.company_id;
+
+        if (!companyId) {
+          return;
+        }
+
         const data =
           await getCompanyById(
             companyId
@@ -126,9 +138,11 @@ export function CompanyShell({
             background:
               "var(--white)",
 
-            borderRadius: "24px",
+            borderRadius:
+              "24px",
 
-            padding: "1.5rem",
+            padding:
+              "1.5rem",
 
             border:
               "1px solid rgba(45,106,45,0.08)",
@@ -157,13 +171,16 @@ export function CompanyShell({
             }}
           >
             <Link
-              href="/"
+              href="/dashboard"
               className="logo"
               style={{
                 justifyContent:
                   "flex-start",
 
                 marginBottom: 0,
+
+                textDecoration:
+                  "none",
               }}
             >
               <img
@@ -264,6 +281,9 @@ export function CompanyShell({
                       textDecoration:
                         "none",
 
+                      transition:
+                        "all .2s ease",
+
                       border:
                         isActive
                           ? "1px solid rgba(45,106,45,0.28)"
@@ -346,6 +366,9 @@ export function CompanyShell({
                     "center",
 
                   gap: ".65rem",
+
+                  flexWrap:
+                    "wrap",
                 }}
               >
                 <h1
@@ -431,6 +454,7 @@ export function CompanyShell({
         <div
           style={{
             display: "grid",
+
             gap: "1.5rem",
           }}
         >

@@ -1,5 +1,3 @@
-// SOLO cambia imports y lógica de estado/loadUsers
-
 "use client";
 
 import {
@@ -34,8 +32,6 @@ type MemberStatus =
   | "active"
   | "inactive";
 
-// SOLO cambia esta interface COMPLETA
-
 interface CompanyAdminMember {
   id: string;
   name: string;
@@ -45,6 +41,7 @@ interface CompanyAdminMember {
   zone: string;
   lastActiveAt: string;
 }
+
 type RoleFilter =
   | MemberRole
   | "all";
@@ -93,11 +90,6 @@ const bodyTextStyle: React.CSSProperties =
 
     fontSize: ".92rem",
   };
-
-const toneByStatus = {
-  active: "high",
-  suspended: "pending",
-} as const;
 
 export function CompanyUsers() {
   return (
@@ -154,75 +146,119 @@ function CompanyUsersContent() {
       "user"
     );
 
-  /* TEMPORAL */
-  const companyId =
-    "YOUR_COMPANY_ID";
+  const [companyId, setCompanyId] =
+    useState<string | null>(
+      null
+    );
 
   useEffect(() => {
-    loadUsers();
+    const storedUser =
+      localStorage.getItem(
+        "user"
+      );
+
+    if (!storedUser) {
+      setLoading(false);
+
+      return;
+    }
+
+    try {
+      const parsedUser =
+        JSON.parse(storedUser);
+
+      if (
+        parsedUser?.company_id
+      ) {
+        setCompanyId(
+          parsedUser.company_id
+        );
+      } else {
+        toast(
+          "No company assigned.",
+          "warning"
+        );
+
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error(error);
+
+      setLoading(false);
+    }
   }, []);
 
-// Y REEMPLAZA TODO tu loadUsers() COMPLETO por este
+  useEffect(() => {
+    if (!companyId) return;
 
-async function loadUsers() {
-  try {
-    const response =
-      await getCompanyUsers(
-        companyId
-      );
+    loadUsers();
+  }, [companyId]);
 
-    const mappedUsers =
-      (response || []).map(
+  async function loadUsers() {
+    if (!companyId) return;
+
+    try {
+      setLoading(true);
+
+      const response =
+        await getCompanyUsers(
+          companyId
+        );
+
+      const mappedUsers =
         (
-          user: any
-        ): CompanyAdminMember => ({
-          id:
-            user.id ||
-            user.user_id,
+          response || []
+        ).map(
+          (
+            user: any
+          ): CompanyAdminMember => ({
+            id:
+              user.id ||
+              user.user_id,
 
-          name:
-            user.name ||
-            user.full_name ||
-            "Unknown user",
+            name:
+              user.name ||
+              user.full_name ||
+              "Unknown user",
 
-          email:
-            user.email ||
-            "No email",
+            email:
+              user.email ||
+              "No email",
 
-          role:
-            user.role ===
-            "company_admin"
-              ? "company_admin"
-              : "user",
+            role:
+              user.role ===
+              "company_admin"
+                ? "company_admin"
+                : "user",
 
-          status:
-            user.is_active ===
-            false
-              ? "inactive"
-              : "active",
+            status:
+              user.is_active ===
+              false
+                ? "inactive"
+                : "active",
 
-          zone:
-            user.zone ||
-            "Unassigned",
+            zone:
+              user.zone ||
+              "Unassigned",
 
-          lastActiveAt:
-  user.last_active_at ||
-  new Date().toISOString(),
-        })
+            lastActiveAt:
+              user.last_active_at ||
+              new Date().toISOString(),
+          })
+        );
+
+      setUsers(mappedUsers);
+    } catch (error) {
+      console.error(error);
+
+      toast(
+        "Failed to load company users.",
+        "warning"
       );
-
-    setUsers(mappedUsers);
-  } catch (error) {
-    console.error(error);
-
-    toast(
-      "Failed to load company users.",
-      "warning"
-    );
-  } finally {
-    setLoading(false);
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
   const hasActiveFilters =
     searchTerm.trim().length >
@@ -319,6 +355,7 @@ async function loadUsers() {
     user: CompanyAdminMember
   ) {
     setRoleModalUser(user);
+
     setDraftRole(user.role);
   }
 
@@ -352,7 +389,10 @@ async function loadUsers() {
   }
 
   async function confirmStatusChange() {
-    if (!statusModalUser)
+    if (
+      !statusModalUser ||
+      !companyId
+    )
       return;
 
     try {
@@ -605,8 +645,6 @@ async function loadUsers() {
           }
         />
       </PanelCard>
-
-      {/* MODALS igual que los tuyos */}
     </CompanyShell>
   );
 }

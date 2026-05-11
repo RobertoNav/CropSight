@@ -1,11 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import { CompanyShell } from "@/components/company/CompanyShell";
+
 import { InfoTooltip } from "@/components/company/InfoTooltip";
+
 import { MetricCard } from "@/components/ui/MetricCard";
+
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
 import {
@@ -14,87 +21,165 @@ import {
   getJoinRequests,
 } from "@/services/company.service";
 
-const sectionCardStyle: React.CSSProperties = {
-  background: "var(--white)",
-  borderRadius: "20px",
-  border: "1px solid rgba(45,106,45,0.08)",
-  boxShadow: "var(--shadow-card)",
-  padding: "1.35rem",
-};
+const sectionCardStyle: React.CSSProperties =
+  {
+    background:
+      "var(--white)",
 
-const labelStyle: React.CSSProperties = {
-  fontSize: ".75rem",
-  color: "var(--gray-400)",
-  textTransform: "uppercase",
-  letterSpacing: ".08em",
-  fontWeight: 600,
-};
+    borderRadius:
+      "20px",
 
-const bodyTextStyle: React.CSSProperties = {
-  color: "var(--gray-600)",
-  fontSize: ".92rem",
-};
+    border:
+      "1px solid rgba(45,106,45,0.08)",
+
+    boxShadow:
+      "var(--shadow-card)",
+
+    padding: "1.35rem",
+  };
+
+const labelStyle: React.CSSProperties =
+  {
+    fontSize: ".75rem",
+
+    color:
+      "var(--gray-400)",
+
+    textTransform:
+      "uppercase",
+
+    letterSpacing:
+      ".08em",
+
+    fontWeight: 600,
+  };
 
 const toneByStatus = {
   active: "high",
-  suspended: "pending",
+
+  suspended:
+    "pending",
 } as const;
 
 const toneByPriority = {
   success: {
     bg: "rgba(74,143,74,0.1)",
-    color: "var(--green-900)",
+
+    color:
+      "var(--green-900)",
   },
 
   warning: {
     bg: "rgba(214,137,16,0.12)",
-    color: "var(--warning)",
+
+    color:
+      "var(--warning)",
   },
 
   info: {
     bg: "rgba(26,68,128,0.1)",
-    color: "#1a4480",
+
+    color:
+      "#1a4480",
   },
 } as const;
+
+interface Company {
+  id: string;
+
+  name: string;
+
+  sector: string;
+
+  status:
+    | "active"
+    | "suspended";
+
+  logo_url?: string | null;
+}
+
+interface CompanyUser {
+  id: string;
+
+  name: string;
+
+  email: string;
+
+  role: string;
+
+  is_active: boolean;
+}
+
+interface JoinRequest {
+  id: string;
+
+  status:
+    | "pending"
+    | "approved"
+    | "rejected";
+}
 
 export function CompanyOverview() {
   const [loading, setLoading] =
     useState(true);
 
   const [company, setCompany] =
-    useState<any>(null);
+    useState<Company | null>(
+      null
+    );
 
   const [users, setUsers] =
-    useState<any[]>([]);
+    useState<
+      CompanyUser[]
+    >([]);
 
   const [requests, setRequests] =
-    useState<any[]>([]);
+    useState<
+      JoinRequest[]
+    >([]);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const user =
-          localStorage.getItem(
-            "user"
-          );
+    loadData();
+  }, []);
 
-        const parsedUser = user
-          ? JSON.parse(user)
-          : null;
+  async function loadData() {
+    try {
+      const storedUser =
+        localStorage.getItem(
+          "user"
+        );
 
-        const companyId =
-          parsedUser?.company_id;
+      if (!storedUser) {
+        setLoading(false);
+        return;
+      }
 
-        if (!companyId) return;
+      const parsedUser =
+        JSON.parse(
+          storedUser
+        );
 
-        const [
-          companyData,
-          usersData,
-          requestsData,
-        ] = await Promise.all([
-          getCompanyById(companyId),
+      const companyId =
+        parsedUser?.company_id;
 
-          getCompanyUsers(companyId),
+      if (!companyId) {
+        setLoading(false);
+        return;
+      }
+
+      const [
+        companyData,
+        usersData,
+        requestsData,
+      ] =
+        await Promise.all([
+          getCompanyById(
+            companyId
+          ),
+
+          getCompanyUsers(
+            companyId
+          ),
 
           getJoinRequests(
             companyId,
@@ -102,41 +187,45 @@ export function CompanyOverview() {
           ),
         ]);
 
-        setCompany(companyData);
+      setCompany(
+        companyData
+      );
 
-        setUsers(usersData || []);
+      setUsers(
+        usersData || []
+      );
 
-        setRequests(
-          requestsData || []
-        );
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
+      setRequests(
+        requestsData || []
+      );
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-
-    loadData();
-  }, []);
+  }
 
   const summary = {
-    totalMembers: users.length,
+    totalMembers:
+      users.length,
 
     activeMembers:
       users.filter(
-        (u) => u.is_active
+        (user) =>
+          user.is_active
       ).length,
 
     adminMembers:
       users.filter(
-        (u) =>
-          u.role ===
+        (user) =>
+          user.role ===
           "company_admin"
       ).length,
 
     inactiveMembers:
       users.filter(
-        (u) => !u.is_active
+        (user) =>
+          !user.is_active
       ).length,
 
     pendingRequests:
@@ -146,41 +235,55 @@ export function CompanyOverview() {
   const priorityItems = [
     {
       id: "requests",
-      label: "Requests",
+
+      label:
+        "Requests",
 
       title: `${summary.pendingRequests} pending join requests`,
 
-      href: "/company/requests",
+      href:
+        "/company/requests",
 
-      hrefLabel: "Open queue",
+      hrefLabel:
+        "Open queue",
 
-      tone: "warning" as const,
+      tone:
+        "warning" as const,
     },
 
     {
       id: "members",
+
       label: "Team",
 
-      title: `${summary.inactiveMembers} inactive member`,
+      title: `${summary.inactiveMembers} inactive members`,
 
-      href: "/company/users",
+      href:
+        "/company/users",
 
-      hrefLabel: "Review users",
+      hrefLabel:
+        "Review users",
 
-      tone: "info" as const,
+      tone:
+        "info" as const,
     },
 
     {
       id: "health",
-      label: "Company",
+
+      label:
+        "Company",
 
       title: `${summary.activeMembers} active users`,
 
-      href: "/company/users",
+      href:
+        "/company/users",
 
-      hrefLabel: "View users",
+      hrefLabel:
+        "View users",
 
-      tone: "success" as const,
+      tone:
+        "success" as const,
     },
   ];
 
@@ -188,7 +291,8 @@ export function CompanyOverview() {
     return (
       <div
         style={{
-          padding: "2rem",
+          padding:
+            "2rem",
         }}
       >
         Loading company dashboard...
@@ -200,7 +304,8 @@ export function CompanyOverview() {
     return (
       <div
         style={{
-          padding: "2rem",
+          padding:
+            "2rem",
         }}
       >
         Company not found.
@@ -211,7 +316,9 @@ export function CompanyOverview() {
   return (
     <CompanyShell
       activePath="/company"
-      title={company.name}
+      title={
+        company.name
+      }
       description="A shared operational view for your company administrators to monitor team health, queue pressure, and next actions without leaving the panel."
       statusTone={
         toneByStatus[
@@ -219,13 +326,17 @@ export function CompanyOverview() {
         ]
       }
       statusLabel={
-        company.status === "active"
+        company.status ===
+        "active"
           ? "Company active"
           : "Company suspended"
       }
       action={{
-        href: "/company/requests",
-        label: "Review requests",
+        href:
+          "/company/requests",
+
+        label:
+          "Review requests",
       }}
     >
       <section
@@ -245,13 +356,16 @@ export function CompanyOverview() {
         >
           <div
             style={{
-              display: "grid",
+              display:
+                "grid",
+
               gap: "1.25rem",
             }}
           >
             <div
               style={{
-                display: "flex",
+                display:
+                  "flex",
 
                 alignItems:
                   "flex-start",
@@ -261,11 +375,16 @@ export function CompanyOverview() {
 
                 gap: "1rem",
 
-                flexWrap: "wrap",
+                flexWrap:
+                  "wrap",
               }}
             >
               <div>
-                <p style={labelStyle}>
+                <p
+                  style={
+                    labelStyle
+                  }
+                >
                   Primary company
                 </p>
 
@@ -274,7 +393,8 @@ export function CompanyOverview() {
                     fontFamily:
                       "var(--font-display)",
 
-                    fontSize: "2rem",
+                    fontSize:
+                      "2rem",
 
                     fontWeight: 400,
 
@@ -287,7 +407,9 @@ export function CompanyOverview() {
                       ".2rem",
                   }}
                 >
-                  {company.name}
+                  {
+                    company.name
+                  }
                 </h2>
               </div>
 
@@ -308,7 +430,8 @@ export function CompanyOverview() {
 
             <div
               style={{
-                display: "grid",
+                display:
+                  "grid",
 
                 gridTemplateColumns:
                   "repeat(auto-fit, minmax(190px, 1fr))",
@@ -347,7 +470,8 @@ export function CompanyOverview() {
         >
           <div
             style={{
-              display: "grid",
+              display:
+                "grid",
             }}
           >
             {priorityItems.map(
@@ -362,7 +486,9 @@ export function CompanyOverview() {
 
                 return (
                   <div
-                    key={item.id}
+                    key={
+                      item.id
+                    }
                     style={{
                       display:
                         "grid",
@@ -370,7 +496,8 @@ export function CompanyOverview() {
                       gap: ".55rem",
 
                       padding:
-                        index === 0
+                        index ===
+                        0
                           ? ".15rem 0 1rem"
                           : "1rem 0",
 
@@ -480,7 +607,9 @@ export function CompanyOverview() {
                           "-.01em",
                       }}
                     >
-                      {item.title}
+                      {
+                        item.title
+                      }
                     </p>
                   </div>
                 );
@@ -508,6 +637,7 @@ export function CompanyOverview() {
           sub={`${summary.activeMembers} active across the company`}
           trend={{
             label: `${summary.adminMembers} admins`,
+
             up: true,
           }}
           icon={
@@ -531,6 +661,7 @@ export function CompanyOverview() {
           trend={{
             label:
               "Needs attention",
+
             up: false,
           }}
           icon={
@@ -553,6 +684,7 @@ export function CompanyOverview() {
           sub="Currently active"
           trend={{
             label: `${summary.inactiveMembers} inactive`,
+
             up: true,
           }}
           icon={
@@ -576,6 +708,7 @@ export function CompanyOverview() {
           trend={{
             label:
               "Healthy access control",
+
             up: true,
           }}
           icon={
@@ -601,22 +734,32 @@ function SectionCard({
   children,
 }: {
   eyebrow: string;
+
   title: string;
+
   description: string;
+
   children: React.ReactNode;
 }) {
   return (
-    <section style={sectionCardStyle}>
+    <section
+      style={
+        sectionCardStyle
+      }
+    >
       <div
         style={{
-          marginBottom: "1.15rem",
+          marginBottom:
+            "1.15rem",
         }}
       >
         <p
           style={{
             ...labelStyle,
+
             color:
               "var(--green-800)",
+
             marginBottom:
               ".45rem",
           }}
@@ -655,7 +798,9 @@ function SectionCard({
           </h3>
 
           <InfoTooltip
-            text={description}
+            text={
+              description
+            }
           />
         </div>
       </div>
@@ -670,14 +815,17 @@ function InfoTile({
   value,
 }: {
   label: string;
+
   value: string;
 }) {
   return (
     <div
       style={{
-        padding: ".95rem 1rem",
+        padding:
+          ".95rem 1rem",
 
-        borderRadius: "16px",
+        borderRadius:
+          "16px",
 
         background:
           "var(--gray-50)",
@@ -686,13 +834,18 @@ function InfoTile({
           "1px solid var(--gray-100)",
       }}
     >
-      <p style={labelStyle}>
+      <p
+        style={
+          labelStyle
+        }
+      >
         {label}
       </p>
 
       <p
         style={{
-          marginTop: ".35rem",
+          marginTop:
+            ".35rem",
 
           fontWeight: 600,
 

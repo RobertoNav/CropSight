@@ -1,9 +1,19 @@
 'use client'
+
 // app/(public)/register/company/page.tsx
 
 import { useState } from 'react'
 import Link from 'next/link'
+
 import { Logo } from '@/components/ui/Logo'
+
+import {
+  register,
+} from '@/services/auth.service'
+
+import {
+  createCompany,
+} from '@/services/company.service'
 
 type Step = 1 | 2
 
@@ -17,9 +27,11 @@ const SECTORS = [
 ]
 
 export default function RegisterCompanyPage() {
-  const [step, setStep] = useState<Step>(1)
+  const [step, setStep] =
+    useState<Step>(1)
 
-  const [error, setError] = useState('')
+  const [error, setError] =
+    useState('')
 
   const [loading, setLoading] =
     useState(false)
@@ -102,36 +114,12 @@ export default function RegisterCompanyPage() {
         1. REGISTER USER
       */
 
-      const registerRes = await fetch(
-        '/api/v1/auth/register',
-        {
-          method: 'POST',
-
-          headers: {
-            'Content-Type':
-              'application/json',
-          },
-
-          body: JSON.stringify({
-            name: form.full_name,
-            email: form.email,
-            password: form.password,
-          }),
-        }
-      )
-
-      if (!registerRes.ok) {
-        const data =
-          await registerRes.json()
-
-        throw new Error(
-          data?.error?.message ||
-            'Could not create account'
-        )
-      }
-
       const registerData =
-        await registerRes.json()
+        await register({
+          name: form.full_name,
+          email: form.email,
+          password: form.password,
+        })
 
       /*
         SAVE TOKENS
@@ -163,44 +151,24 @@ export default function RegisterCompanyPage() {
         2. CREATE COMPANY
       */
 
-      const companyRes = await fetch(
-        '/api/v1/companies',
-        {
-          method: 'POST',
-
-          headers: {
-            'Content-Type':
-              'application/json',
-
-            Authorization: `Bearer ${registerData.access_token}`,
-          },
-
-          body: JSON.stringify({
-            name: form.company_name,
-            sector: form.sector,
-          }),
-        }
-      )
-
-      if (!companyRes.ok) {
-        const data =
-          await companyRes.json()
-
-        throw new Error(
-          data?.error?.message ||
-            'Could not create company'
-        )
-      }
+      await createCompany({
+        name: form.company_name,
+        sector: form.sector,
+      })
 
       /*
         SUCCESS
       */
 
       window.location.href =
-        '/dashboard'
+        '/company'
     } catch (err: any) {
+      console.error(err)
+
       setError(
-        err.message ||
+        err?.response?.data?.error
+          ?.message ||
+          err.message ||
           'Something went wrong'
       )
     } finally {

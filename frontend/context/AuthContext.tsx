@@ -138,58 +138,74 @@ export function AuthProvider({
 
   /* ───────────────── LOGIN ───────────────── */
 
-  function login(
-    data: LoginPayload
-  ) {
-    localStorage.setItem(
-      "access_token",
-      data.access_token
+/* ───────────────── LOGIN ───────────────── */
+
+function login(
+  data: LoginPayload
+) {
+  localStorage.setItem(
+    "access_token",
+    data.access_token
+  );
+
+  localStorage.setItem(
+    "refresh_token",
+    data.refresh_token
+  );
+
+  localStorage.setItem(
+    "user",
+    JSON.stringify(data.user)
+  );
+
+  localStorage.setItem(
+    "role",
+    data.user.role
+  );
+
+  /*
+    COOKIE PARA MIDDLEWARE
+  */
+
+  document.cookie =
+    `access_token=${data.access_token}; path=/`;
+
+  setUser(data.user);
+}
+
+/* ───────────────── LOGOUT ───────────────── */
+
+async function logout() {
+  try {
+    await logoutService();
+  } catch (error) {
+    console.error(error);
+  } finally {
+    localStorage.removeItem(
+      "access_token"
     );
 
-    localStorage.setItem(
-      "refresh_token",
-      data.refresh_token
+    localStorage.removeItem(
+      "refresh_token"
     );
 
-    localStorage.setItem(
-      "user",
-      JSON.stringify(data.user)
-    );
+    localStorage.removeItem("user");
 
-    localStorage.setItem(
-      "role",
-      data.user.role
-    );
+    localStorage.removeItem("role");
 
-    setUser(data.user);
+    /*
+      BORRAR COOKIE
+    */
+
+    document.cookie =
+      "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+    setUser(null);
+
+    window.location.href =
+      "/login";
   }
-
-  /* ───────────────── LOGOUT ───────────────── */
-
-  async function logout() {
-    try {
-      await logoutService();
-    } catch (error) {
-      console.error(error);
-    } finally {
-      localStorage.removeItem(
-        "access_token"
-      );
-
-      localStorage.removeItem(
-        "refresh_token"
-      );
-
-      localStorage.removeItem("user");
-
-      localStorage.removeItem("role");
-
-      setUser(null);
-
-      window.location.href =
-        "/login";
-    }
-  }
+}
 
   return (
     <AuthContext.Provider

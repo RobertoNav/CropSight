@@ -8,7 +8,6 @@ const PUBLIC_PATHS = [
   "/register/company",
   "/forgot-password",
   "/reset-password",
-  "/company/join",
   "/403",
   "/404",
 ];
@@ -20,16 +19,22 @@ function isPublic(pathname: string): boolean {
     PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
-    pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webp|css|js)$/) !== null
+    pathname.match(
+      /\.(png|jpg|jpeg|gif|svg|ico|webp|css|js)$/
+    ) !== null
   );
 }
 
 function parseJwt(token: string) {
   try {
-    const payload = token.split(".")[1];
+    const payload =
+      token.split(".")[1];
 
     return JSON.parse(
-      Buffer.from(payload, "base64").toString()
+      Buffer.from(
+        payload,
+        "base64"
+      ).toString()
     );
   } catch {
     return null;
@@ -38,25 +43,11 @@ function parseJwt(token: string) {
 
 /* ───────────────── MIDDLEWARE ───────────────── */
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  const token =
-    request.cookies.get("access_token")?.value;
-
-  /*
-    Already logged in
-  */
-
-  if (
-    token &&
-    (pathname === "/login" ||
-      pathname === "/register")
-  ) {
-    return NextResponse.redirect(
-      new URL("/dashboard", request.url)
-    );
-  }
+export function middleware(
+  request: NextRequest
+) {
+  const { pathname } =
+    request.nextUrl;
 
   /*
     Public routes
@@ -67,48 +58,128 @@ export function middleware(request: NextRequest) {
   }
 
   /*
-    Protected routes
+    Read token
+  */
+
+  const token =
+    request.cookies.get(
+      "access_token"
+    )?.value;
+
+  /*
+    No token
   */
 
   if (!token) {
-    const loginUrl = new URL(
-      "/login",
-      request.url
-    );
+    const loginUrl =
+      new URL(
+        "/login",
+        request.url
+      );
 
     loginUrl.searchParams.set(
       "next",
       pathname
     );
 
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(
+      loginUrl
+    );
   }
 
   /*
     Decode JWT
   */
 
-  const payload = parseJwt(token);
+  const payload =
+    parseJwt(token);
+
+  /*
+    Invalid token
+  */
 
   if (!payload) {
-    return NextResponse.redirect(
-      new URL("/login", request.url)
+    const response =
+      NextResponse.redirect(
+        new URL(
+          "/login",
+          request.url
+        )
+      );
+
+    response.cookies.delete(
+      "access_token"
     );
+
+    response.cookies.delete(
+      "refresh_token"
+    );
+
+    return response;
   }
 
   const role = payload.role;
+
+  /*
+    Redirect authenticated users
+    away from auth pages
+  */
+
+  if (
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname ===
+      "/register/company"
+  ) {
+    if (role === "super_admin") {
+      return NextResponse.redirect(
+        new URL(
+          "/admin",
+          request.url
+        )
+      );
+    }
+
+    if (
+      role ===
+      "company_admin"
+    ) {
+      return NextResponse.redirect(
+        new URL(
+          "/company",
+          request.url
+        )
+      );
+    }
+
+    return NextResponse.redirect(
+      new URL(
+        "/dashboard",
+        request.url
+      )
+    );
+  }
 
   /*
     Admin routes
   */
 
   if (
-    pathname.startsWith("/admin") &&
-    role !== "super_admin"
+    pathname.startsWith(
+      "/admin"
+    )
   ) {
-    return NextResponse.redirect(
-      new URL("/403", request.url)
-    );
+    if (
+      role !==
+      "super_admin"
+    ) {
+      return NextResponse.redirect(
+        new URL(
+          "/403",
+          request.url
+        )
+      );
+    }
   }
 
   /*
@@ -116,13 +187,23 @@ export function middleware(request: NextRequest) {
   */
 
   if (
-    pathname.startsWith("/company") &&
-    role !== "company_admin" &&
-    role !== "super_admin"
+    pathname.startsWith(
+      "/company"
+    )
   ) {
-    return NextResponse.redirect(
-      new URL("/403", request.url)
-    );
+    if (
+      role !==
+        "company_admin" &&
+      role !==
+        "super_admin"
+    ) {
+      return NextResponse.redirect(
+        new URL(
+          "/403",
+          request.url
+        )
+      );
+    }
   }
 
   /*
@@ -130,10 +211,18 @@ export function middleware(request: NextRequest) {
   */
 
   if (
-    pathname.startsWith("/dashboard") ||
-    pathname.startsWith("/predict") ||
-    pathname.startsWith("/predictions") ||
-    pathname.startsWith("/profile")
+    pathname.startsWith(
+      "/dashboard"
+    ) ||
+    pathname.startsWith(
+      "/predict"
+    ) ||
+    pathname.startsWith(
+      "/predictions"
+    ) ||
+    pathname.startsWith(
+      "/profile"
+    )
   ) {
     if (
       ![
@@ -143,7 +232,10 @@ export function middleware(request: NextRequest) {
       ].includes(role)
     ) {
       return NextResponse.redirect(
-        new URL("/403", request.url)
+        new URL(
+          "/403",
+          request.url
+        )
       );
     }
   }

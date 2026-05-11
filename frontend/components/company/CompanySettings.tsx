@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { CompanyShell } from "@/components/company/CompanyShell";
+
 import { InfoTooltip } from "@/components/company/InfoTooltip";
 
 import {
@@ -23,7 +24,6 @@ import {
 import {
   companyAdminMock,
   type CompanySettingsSnapshot,
-  type MemberRole,
 } from "@/mocks/data/companyAdmin";
 
 type FieldErrorKey =
@@ -42,28 +42,37 @@ type ValidationErrors =
 
 const sectionCardStyle: React.CSSProperties =
   {
-    background: "var(--white)",
-    borderRadius: "20px",
+    background:
+      "var(--white)",
+
+    borderRadius:
+      "20px",
+
     border:
       "1px solid rgba(45,106,45,0.08)",
+
     boxShadow:
       "var(--shadow-card)",
-    padding: "1.35rem",
+
+    padding:
+      "1.35rem",
   };
 
 const labelStyle: React.CSSProperties =
   {
-    fontSize: ".75rem",
-    color: "var(--gray-400)",
-    textTransform: "uppercase",
-    letterSpacing: ".08em",
-    fontWeight: 600,
-  };
+    fontSize:
+      ".75rem",
 
-const bodyTextStyle: React.CSSProperties =
-  {
-    color: "var(--gray-600)",
-    fontSize: ".92rem",
+    color:
+      "var(--gray-400)",
+
+    textTransform:
+      "uppercase",
+
+    letterSpacing:
+      ".08em",
+
+    fontWeight: 600,
   };
 
 const toneByStatus = {
@@ -135,13 +144,30 @@ function CompanySettingsContent() {
       savedSettings
     );
 
-  /* TEMPORAL */
-  const companyId =
-    "YOUR_COMPANY_ID";
-
   useEffect(() => {
     async function loadCompany() {
       try {
+        const user =
+          localStorage.getItem(
+            "user"
+          );
+
+        const parsedUser = user
+          ? JSON.parse(user)
+          : null;
+
+        const companyId =
+          parsedUser?.company_id;
+
+        if (!companyId) {
+          toast(
+            "No company assigned.",
+            "warning"
+          );
+
+          return;
+        }
+
         const data =
           await getCompanyById(
             companyId
@@ -149,7 +175,7 @@ function CompanySettingsContent() {
 
         setCompany(data);
 
-        const updatedSettings =
+        const updatedSettings: CompanySettingsSnapshot =
           {
             ...cloneSettings(
               companyAdminMock.settings
@@ -163,7 +189,19 @@ function CompanySettingsContent() {
                 data.name || "",
 
               sector:
-                data.sector ||
+                data.sector || "",
+
+              location:
+                companyAdminMock
+                  .settings.profile
+                  .location,
+
+              adminName:
+                parsedUser?.name ||
+                "",
+
+              adminContactEmail:
+                parsedUser?.email ||
                 "",
             },
           };
@@ -209,25 +247,6 @@ function CompanySettingsContent() {
     );
   }
 
-  function updateAccessPolicy<
-    K extends keyof CompanySettingsSnapshot["accessPolicy"]
-  >(
-    key: K,
-    value: CompanySettingsSnapshot["accessPolicy"][K]
-  ) {
-    setDraftSettings(
-      (current) => ({
-        ...current,
-
-        accessPolicy: {
-          ...current.accessPolicy,
-
-          [key]: value,
-        },
-      })
-    );
-  }
-
   function discardChanges() {
     if (!isDirty || isSaving)
       return;
@@ -239,7 +258,7 @@ function CompanySettingsContent() {
     );
 
     toast(
-      "Unsaved changes were discarded.",
+      "Unsaved changes discarded.",
       "info"
     );
   }
@@ -252,34 +271,35 @@ function CompanySettingsContent() {
       hasValidationErrors
     ) {
       toast(
-        "Complete the required company fields before saving.",
+        "Please complete all required fields.",
         "warning"
       );
 
       return;
     }
 
+    if (!company) return;
+
     setIsSaving(true);
 
     try {
-      if (company) {
-        const updatedCompany =
-          await updateCompany(
-            company.id,
-            {
-              name:
-                draftSettings
-                  .profile.name,
-            }
-          );
+      const updatedCompany =
+        await updateCompany(
+          company.id,
+          {
+            name:
+              draftSettings
+                .profile.name,
 
-        setCompany(
-          updatedCompany
+            sector:
+              draftSettings
+                .profile.sector,
+          }
         );
-      }
 
-      const timestamp =
-        new Date().toISOString();
+      setCompany(
+        updatedCompany
+      );
 
       const updatedSettings: CompanySettingsSnapshot =
         {
@@ -287,15 +307,12 @@ function CompanySettingsContent() {
 
           audit: {
             updatedAt:
-              timestamp,
+              new Date().toISOString(),
 
             updatedBy:
               draftSettings
-                .profile.adminName
-                .trim() ||
-              savedSettings
-                .audit
-                .updatedBy,
+                .profile.adminName ||
+              "Admin",
           },
         };
 
@@ -308,7 +325,7 @@ function CompanySettingsContent() {
       );
 
       toast(
-        "Company settings saved.",
+        "Company settings updated.",
         "success"
       );
     } catch (error) {
@@ -327,7 +344,8 @@ function CompanySettingsContent() {
     return (
       <div
         style={{
-          padding: "2rem",
+          padding:
+            "2rem",
         }}
       >
         Loading company
@@ -343,7 +361,7 @@ function CompanySettingsContent() {
         company?.name ||
         "Company settings"
       }
-      description="Update company profile details and access defaults from one operational settings view."
+      description="Update company profile details and operational preferences."
       statusTone={
         toneByStatus[
           company?.status ||
@@ -360,13 +378,15 @@ function CompanySettingsContent() {
       <PanelCard
         eyebrow="Profile"
         title="Company profile"
-        description="Keep the company identity block current so admins and collaborators see the right operational context."
+        description="Manage the main company information visible to administrators and collaborators."
       >
         <div
           style={{
             display: "grid",
+
             gridTemplateColumns:
               "repeat(auto-fit, minmax(220px, 1fr))",
+
             gap: "1rem",
           }}
         >
@@ -513,6 +533,50 @@ function CompanySettingsContent() {
             />
           </FormField>
         </div>
+
+        <div
+          style={{
+            display: "flex",
+
+            gap: ".75rem",
+
+            marginTop:
+              "1.5rem",
+
+            flexWrap:
+              "wrap",
+          }}
+        >
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={
+              !isDirty ||
+              isSaving
+            }
+            onClick={
+              discardChanges
+            }
+          >
+            Discard changes
+          </button>
+
+          <button
+            type="button"
+            className="btn btn--primary"
+            disabled={
+              !isDirty ||
+              isSaving
+            }
+            onClick={
+              saveChanges
+            }
+          >
+            {isSaving
+              ? "Saving..."
+              : "Save changes"}
+          </button>
+        </div>
       </PanelCard>
     </CompanyShell>
   );
@@ -530,18 +594,24 @@ function PanelCard({
   children: React.ReactNode;
 }) {
   return (
-    <section style={sectionCardStyle}>
+    <section
+      style={sectionCardStyle}
+    >
       <div
         style={{
-          marginBottom: "1.15rem",
+          marginBottom:
+            "1.15rem",
         }}
       >
         <p
           style={{
             ...labelStyle,
+
             color:
               "var(--green-800)",
-            marginBottom: ".45rem",
+
+            marginBottom:
+              ".45rem",
           }}
         >
           {eyebrow}
@@ -551,15 +621,22 @@ function PanelCard({
           style={{
             display:
               "inline-flex",
-            alignItems: "center",
-            gap: ".55rem",
+
+            alignItems:
+              "center",
+
+            gap:
+              ".55rem",
           }}
         >
           <h2
             style={{
               fontFamily:
                 "var(--font-display)",
-              fontSize: "1.45rem",
+
+              fontSize:
+                "1.45rem",
+
               fontWeight: 400,
             }}
           >
@@ -567,7 +644,9 @@ function PanelCard({
           </h2>
 
           <InfoTooltip
-            text={description}
+            text={
+              description
+            }
           />
         </div>
       </div>
@@ -594,7 +673,9 @@ function FormField({
     <div
       style={{
         display: "grid",
+
         gap: ".45rem",
+
         ...style,
       }}
     >
@@ -612,7 +693,9 @@ function FormField({
           style={{
             color:
               "var(--error)",
-            fontSize: ".8rem",
+
+            fontSize:
+              ".8rem",
           }}
         >
           {error}
@@ -693,20 +776,4 @@ function inputClassName(
   return hasError
     ? "form-input form-input--error"
     : "form-input";
-}
-
-function formatDateTime(
-  value: string
-) {
-  return new Intl.DateTimeFormat(
-    "en",
-    {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }
-  ).format(
-    new Date(value)
-  );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import {
   useEffect,
   useState,
@@ -16,7 +18,7 @@ import {
 import {
   getMe,
   updateProfile,
-  changePassword,
+  logout,
 } from "@/services/auth.service";
 
 const sectionCardStyle: React.CSSProperties =
@@ -92,6 +94,9 @@ interface UserProfileData {
 }
 
 export function UserProfile() {
+  const router =
+    useRouter();
+
   const [
     user,
     setUser,
@@ -123,7 +128,25 @@ export function UserProfile() {
     setLoadingProfile,
   ] = useState(true);
 
+  const [
+    loggingOut,
+    setLoggingOut,
+  ] = useState(false);
+
   useEffect(() => {
+    const token =
+      localStorage.getItem(
+        "access_token"
+      );
+
+    if (!token) {
+      router.replace(
+        "/login"
+      );
+
+      return;
+    }
+
     loadProfile();
   }, []);
 
@@ -139,6 +162,10 @@ export function UserProfile() {
       );
     } catch (error) {
       console.error(error);
+
+      router.replace(
+        "/login"
+      );
     } finally {
       setLoadingProfile(
         false
@@ -154,22 +181,24 @@ export function UserProfile() {
 
       await updateProfile({
         name,
+        password:
+          newPassword ||
+          undefined,
       });
 
-      if (
-        currentPassword &&
-        newPassword
-      ) {
-        await changePassword(
-          {
-            current_password:
-              currentPassword,
+      const updatedUser = {
+        ...user,
+        name,
+      };
 
-            new_password:
-              newPassword,
-          }
-        );
-      }
+      localStorage.setItem(
+        "user",
+        JSON.stringify(
+          updatedUser
+        )
+      );
+
+      setUser(updatedUser);
 
       setCurrentPassword(
         ""
@@ -188,6 +217,26 @@ export function UserProfile() {
       );
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleLogout() {
+    try {
+      setLoggingOut(true);
+
+      await logout();
+
+      router.replace(
+        "/login"
+      );
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        "Failed to logout"
+      );
+    } finally {
+      setLoggingOut(false);
     }
   }
 
@@ -269,10 +318,42 @@ export function UserProfile() {
             </h1>
           </div>
 
-          <StatusBadge
-            status="high"
-            label="Active"
-          />
+          <div
+            style={{
+              display: "flex",
+
+              alignItems:
+                "center",
+
+              gap: ".75rem",
+
+              flexWrap:
+                "wrap",
+            }}
+          >
+            <StatusBadge
+              status="high"
+              label="Active"
+            />
+
+            <button
+              onClick={
+                handleLogout
+              }
+              disabled={
+                loggingOut
+              }
+              className="btn btn--ghost btn--sm"
+              style={{
+                width:
+                  "fit-content",
+              }}
+            >
+              {loggingOut
+                ? "Logging out..."
+                : "Logout"}
+            </button>
+          </div>
         </div>
       </section>
 
@@ -313,6 +394,9 @@ export function UserProfile() {
               user?.role ===
               "company_admin"
                 ? "Company Admin"
+                : user?.role ===
+                  "super_admin"
+                ? "Super Admin"
                 : "Field User"
             }
           />

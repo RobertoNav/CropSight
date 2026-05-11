@@ -8,6 +8,10 @@ import {
   useState,
 } from "react";
 
+import {
+  useRouter,
+} from "next/navigation";
+
 import { MetricCard } from "@/components/ui/MetricCard";
 
 import { Badge } from "@/components/ui/Badge";
@@ -24,9 +28,11 @@ interface UserProfile {
   id: string;
   name: string;
   email: string;
+
   company?: {
     name: string;
   };
+
   created_at?: string;
 }
 
@@ -79,6 +85,9 @@ const bodyTextStyle: React.CSSProperties =
   };
 
 export function UserDashboard() {
+  const router =
+    useRouter();
+
   const [user, setUser] =
     useState<UserProfile | null>(
       null
@@ -95,57 +104,95 @@ export function UserDashboard() {
     useState(true);
 
   useEffect(() => {
+    const token =
+      localStorage.getItem(
+        "access_token"
+      );
+
+    if (!token) {
+      router.replace(
+        "/login"
+      );
+
+      return;
+    }
+
     loadDashboard();
   }, []);
 
-async function loadDashboard() {
-  try {
-    const [
-      userResponse,
-      predictionsResponse,
-    ] =
-      await Promise.all([
-        getMe(),
+  async function loadDashboard() {
+    try {
+      const [
+        userResponse,
+        predictionsResponse,
+      ] =
+        await Promise.all([
+          getMe(),
 
-        getPredictions(
-          1,
-          10
-        ),
-      ]);
+          getPredictions(
+            1,
+            10
+          ),
+        ]);
 
-    setUser(userResponse);
+      setUser(userResponse);
 
-    setPredictions(
-      (
-        predictionsResponse
-          ?.data || []
-      ).map(
+      setPredictions(
         (
-          prediction: any
-        ) => ({
-          id:
-            prediction.id,
+          predictionsResponse
+            ?.data || []
+        ).map(
+          (
+            prediction: any
+          ) => ({
+            id:
+              prediction.id,
 
-          label:
-            prediction.label ||
-            prediction.predicted_label ||
-            "Unknown",
+            label:
+              prediction.label ||
+              prediction.predicted_label ||
+              "Unknown",
 
-          confidence:
-            prediction.confidence ||
-            0,
+            confidence:
+              prediction.confidence ||
+              0,
 
-          created_at:
-            prediction.created_at,
-        })
-      )
-    );
-  } catch (error) {
-    console.error(error);
-  } finally {
-    setLoading(false);
+            created_at:
+              prediction.created_at,
+          })
+        )
+      );
+    } catch (error: any) {
+      console.error(error);
+
+      if (
+        error?.response
+          ?.status === 401
+      ) {
+        localStorage.removeItem(
+          "access_token"
+        );
+
+        localStorage.removeItem(
+          "refresh_token"
+        );
+
+        localStorage.removeItem(
+          "user"
+        );
+
+        localStorage.removeItem(
+          "role"
+        );
+
+        router.replace(
+          "/login"
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
   const bestConfidence =
     useMemo(() => {
@@ -183,7 +230,6 @@ async function loadDashboard() {
         gap: "1.5rem",
       }}
     >
-      {/* top */}
       <section
         style={{
           display: "grid",
@@ -312,7 +358,6 @@ async function loadDashboard() {
         </SectionCard>
       </section>
 
-      {/* metrics */}
       <section
         style={{
           display: "grid",
@@ -387,7 +432,6 @@ async function loadDashboard() {
         />
       </section>
 
-      {/* history */}
       <SectionCard
         eyebrow="Prediction history"
         title="Recent predictions"
