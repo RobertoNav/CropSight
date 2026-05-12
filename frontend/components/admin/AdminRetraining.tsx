@@ -30,6 +30,7 @@ const labelStyle: React.CSSProperties = {
 type RetrainingJob = {
   id: string;
   status:
+    | "pending"
     | "running"
     | "completed"
     | "failed";
@@ -38,7 +39,11 @@ type RetrainingJob = {
 
   github_run_id?: string;
 
-  started_at: string;
+  created_at?: string | null;
+
+  started_at?: string | null;
+
+  completed_at?: string | null;
 
   finished_at?: string | null;
 
