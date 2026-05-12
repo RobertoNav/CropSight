@@ -1,0 +1,114 @@
+name: CropSight Staging Deployment
+
+on:
+  push:
+    branches:
+      - staging
+
+env:
+  TF_VERSION: "1.9.0"
+  AWS_REGION: "us-east-1"
+  WORKING_DIR: "./infra"
+  ECR_REPOSITORY: "cropsight-backend"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-staging-main
+  cancel-in-progress: false
+
+jobs:
+  deploy-staging:
+    name: "Deploy Staging"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          terraform init \
+            -backend-config="key=staging/terraform.tfstate"
+
+      - name: Terraform Apply - staging
+        working-directory: ${{ env.WORKING_DIR }}
+        env:
+          TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+          TF_VAR_github_token: ${{ secrets.TF_VAR_GITHUB_TOKEN }}
+        run: |
+          terraform apply \
+            -var-file=environments/staging.tfvars \
+            -auto-approve \
+            -no-color
+
+      - name: Capture staging outputs
+        id: staging-outputs
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          {
+            echo "asg_name=$(terraform output -raw asg_name)"
+            echo "alb_dns_name=$(terraform output -raw alb_dns_name)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Amazon ECR
+        id: login-ecr-staging
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend image - staging
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.login-ecr-staging.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.login-ecr-staging.outputs.registry }}/${{ env.ECR_REPOSITORY }}:staging
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Refresh backend instances - staging
+        run: |
+          aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name "${{ steps.staging-outputs.outputs.asg_name }}" \
+            --region "${AWS_REGION}" || true
+
+      - name: Smoke tests
+        env:
+          ALB_DNS_NAME: ${{ steps.staging-outputs.outputs.alb_dns_name }}
+        run: |
+          echo "Running smoke tests against http://${ALB_DNS_NAME}/api/v1/health"
+          for attempt in $(seq 1 24); do
+            if curl -fsS "http://${ALB_DNS_NAME}/api/v1/health" >/dev/null; then
+              echo "Smoke tests passed on attempt ${attempt}"
+              exit 0
+            fi
+
+            echo "Attempt ${attempt} failed; waiting before retry..."
+            sleep 15
+          done
+
+          echo "Smoke tests failed after all retries"
+          exit 1
+
+      - name: Show outputs
+        if: success()
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform output

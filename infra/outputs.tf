@@ -1,4 +1,3 @@
-# ── Networking ────────────────────────────────────────────────────────────────
 output "vpc_id" {
   description = "ID of the CropSight VPC"
   value       = module.networking.vpc_id
@@ -14,13 +13,16 @@ output "private_subnet_ids" {
   value       = module.networking.private_subnet_ids
 }
 
-# ── Compute ───────────────────────────────────────────────────────────────────
 output "alb_dns_name" {
   description = "Public DNS name of the Application Load Balancer"
   value       = module.compute.alb_dns_name
 }
 
-# ── Database ──────────────────────────────────────────────────────────────────
+output "asg_name" {
+  description = "Name of the Auto Scaling Group for the backend"
+  value       = module.compute.asg_name
+}
+
 output "db_endpoint" {
   description = "Connection endpoint of the RDS PostgreSQL instance"
   value       = module.database.db_endpoint
@@ -31,13 +33,11 @@ output "db_name" {
   value       = module.database.db_name
 }
 
-# ── MLOps ─────────────────────────────────────────────────────────────────────
 output "mlflow_url" {
   description = "Private DNS URL of the MLflow tracking server"
   value       = module.mlops.mlflow_url
 }
 
-# ── Storage ───────────────────────────────────────────────────────────────────
 output "imgs_bucket_name" {
   description = "Name of the S3 bucket for crop images"
   value       = module.storage.imgs_bucket_name
