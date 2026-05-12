@@ -173,10 +173,10 @@ resource "aws_security_group" "mlflow" {
   vpc_id      = var.vpc_id
 
   ingress {
-    description     = "MLflow from VPC"
-    from_port       = 5000
-    to_port         = 5000
-    protocol        = "tcp"
+    description = "MLflow from VPC"
+    from_port   = 5000
+    to_port     = 5000
+    protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
   }
 
@@ -326,9 +326,15 @@ exec > /var/log/user-data.log 2>&1
 
 # System updates
 dnf update -y
-dnf install -y python3.11 python3.11-pip docker awscli amazon-cloudwatch-agent
+dnf install -y python3.11 python3.11-pip docker amazon-cloudwatch-agent unzip
 
-# Docker must be up before the backend container can start
+# Install AWS CLI v2 (no depende de pip del sistema)
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+unzip /tmp/awscliv2.zip -d /tmp/
+/tmp/aws/install
+rm -rf /tmp/awscliv2.zip /tmp/aws/
+
+# Docker
 systemctl enable docker
 systemctl start docker
 
@@ -341,7 +347,7 @@ cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWA'
         "collect_list": [
           {
             "file_path": "/var/log/user-data.log",
-            "log_group_name": "/cropsight/dev/user-data",
+            "log_group_name": "/cropsight/${var.env}/user-data",
             "log_stream_name": "{instance_id}"
           }
         ]
@@ -355,24 +361,22 @@ CWA
   -a fetch-config -m ec2 \
   -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
 
-# Alias python
-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
-python3 -m pip install --upgrade pip
+# Alias python3.11 sin tocar el python del sistema
+alternatives --install /usr/bin/python3.11 python3.11 /usr/bin/python3.11 1
+python3.11 -m pip install --upgrade pip
 
-# Create backend environment file for the container
+# Fetch SSM parameters
 mkdir -p /opt/cropsight
 fetch_ssm_parameter() {
   local parameter_name="$1"
   local parameter_value=""
-
-  until parameter_value=$(aws ssm get-parameter \
+  until parameter_value=$(/usr/local/bin/aws ssm get-parameter \
     --name "$parameter_name" \
     --query "Parameter.Value" \
     --output text \
     --region "${var.aws_region}" 2>/dev/null); do
     sleep 10
   done
-
   echo "$parameter_value"
 }
 
@@ -386,6 +390,8 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
 AWS_REGION=${var.aws_region}
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
 S3_BUCKET_IMAGES=cropsight-${var.env}-imgs
 S3_BUCKET_MODELS=cropsight-${var.env}-mlflow
 LAMBDA_INFERENCE_URL=${var.inference_service_url}
@@ -397,7 +403,7 @@ GITHUB_WORKFLOW_ID=retrain.yml
 ENVIRONMENT=${var.env}
 ENVFILE
 
-# Authenticate Docker to the ECR repository and pull the image used by this environment
+# Authenticate Docker to ECR and pull image
 ECR_REGISTRY=$(echo "${var.ecr_repository_url}" | cut -d/ -f1)
 if [ "${var.env}" = "prod" ]; then
   IMAGE_TAG="latest"
@@ -406,7 +412,7 @@ else
 fi
 IMAGE_URI="${var.ecr_repository_url}:$${IMAGE_TAG}"
 
-aws ecr get-login-password --region "${var.aws_region}" \
+/usr/local/bin/aws ecr get-login-password --region "${var.aws_region}" \
   | docker login --username AWS --password-stdin "$${ECR_REGISTRY}"
 docker pull "$${IMAGE_URI}" || true
 
