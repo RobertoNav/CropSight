@@ -52,7 +52,14 @@ export interface RetrainingJob {
 
   notes?: string;
 
-  created_at: string;
+  /*
+    OPTIONAL
+    porque backend no siempre lo manda
+  */
+
+  started_at?: string | null;
+
+  created_at?: string | null;
 
   completed_at?: string | null;
 }
@@ -159,18 +166,20 @@ export async function getRetrainingJobs(): Promise<
     );
 
   /*
-    algunos backends regresan:
+    soporta:
     { data: [...] }
-
-    otros:
+    o
     [...]
   */
 
-  return (
+  const jobs =
     response.data?.data ||
     response.data ||
-    []
-  );
+    [];
+
+  return Array.isArray(jobs)
+    ? jobs
+    : [];
 }
 
 /* ───────────────── USERS ───────────────── */
@@ -236,17 +245,3 @@ export async function deleteUser(
 
   return response.data;
 }
-
-/* ───────────────── IMPORTANT ───────────────── */
-/*
-  ❌ ELIMINADOS porque NO existen
-  en backend todavía:
-
-  - /admin/models
-  - /admin/models/:version
-  - /promote
-  - /rollback
-
-  Si los dejas y algún componente
-  los llama -> 404.
-*/

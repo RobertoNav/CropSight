@@ -3,67 +3,103 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import { MetricCard } from "@/components/ui/MetricCard";
 
 import {
   getUsageMetrics,
   getRetrainingJobs,
+  type RetrainingJob,
 } from "@/services/admin.service";
 
 import { getCompanies } from "@/services/company.service";
 
-const sectionCardStyle: React.CSSProperties = {
-  background: "var(--white)",
-  borderRadius: "20px",
-  border: "1px solid rgba(45,106,45,0.08)",
-  boxShadow: "var(--shadow-card)",
-  padding: "1.4rem",
-};
+const sectionCardStyle: React.CSSProperties =
+  {
+    background:
+      "var(--white)",
 
-const labelStyle: React.CSSProperties = {
-  fontSize: ".75rem",
-  color: "var(--gray-400)",
-  textTransform: "uppercase",
-  letterSpacing: ".08em",
-  fontWeight: 600,
-};
+    borderRadius:
+      "20px",
+
+    border:
+      "1px solid rgba(45,106,45,0.08)",
+
+    boxShadow:
+      "var(--shadow-card)",
+
+    padding: "1.4rem",
+  };
+
+const labelStyle: React.CSSProperties =
+  {
+    fontSize: ".75rem",
+
+    color:
+      "var(--gray-400)",
+
+    textTransform:
+      "uppercase",
+
+    letterSpacing:
+      ".08em",
+
+    fontWeight: 600,
+  };
 
 const quickLinks = [
   {
-    title: "Manage companies",
-    href: "/admin/companies",
+    title:
+      "Manage companies",
+
+    href:
+      "/admin/companies",
+
     icon: "🏢",
   },
+
   {
-    title: "Platform metrics",
-    href: "/admin/metrics",
+    title:
+      "Platform metrics",
+
+    href:
+      "/admin/metrics",
+
     icon: "📊",
   },
+
   {
-    title: "Retraining jobs",
-    href: "/admin/retraining",
+    title:
+      "Retraining jobs",
+
+    href:
+      "/admin/retraining",
+
     icon: "🔄",
   },
+
   {
-    title: "Manage users",
-    href: "/admin/users",
+    title:
+      "Manage users",
+
+    href:
+      "/admin/users",
+
     icon: "👥",
   },
 ];
 
 type ActivityItem = {
   title: string;
-  desc: string;
-  time: string;
-};
 
-type RetrainingJob = {
-  id: string;
-  status: string;
-  notes?: string;
-  started_at: string;
+  desc: string;
+
+  time: string;
 };
 
 export function AdminOverview() {
@@ -73,8 +109,11 @@ export function AdminOverview() {
   const [metrics, setMetrics] =
     useState({
       activeCompanies: 0,
+
       predictions: 0,
+
       activeUsers: 0,
+
       retrainingJobs: 0,
     });
 
@@ -94,7 +133,8 @@ export function AdminOverview() {
           getCompanies({
             page: 1,
             limit: 10,
-            status: "active",
+            status:
+              "active",
           }),
 
           getRetrainingJobs(),
@@ -123,7 +163,8 @@ export function AdminOverview() {
           retrainingJobs:
             jobs.filter(
               (job) =>
-                job.status === "running"
+                job.status ===
+                "running"
             ).length,
         });
 
@@ -131,8 +172,11 @@ export function AdminOverview() {
           new Intl.DateTimeFormat(
             "en-US",
             {
-              dateStyle: "medium",
-              timeStyle: "short",
+              dateStyle:
+                "medium",
+
+              timeStyle:
+                "short",
             }
           );
 
@@ -140,15 +184,30 @@ export function AdminOverview() {
           [
             ...jobs
               .sort(
-                (a, b) =>
-                  new Date(
-                    b.started_at
-                  ).getTime() -
-                  new Date(
-                    a.started_at
-                  ).getTime()
+                (a, b) => {
+                  const left =
+                    new Date(
+                      b.started_at ||
+                        b.created_at ||
+                        ""
+                    ).getTime();
+
+                  const right =
+                    new Date(
+                      a.started_at ||
+                        a.created_at ||
+                        ""
+                    ).getTime();
+
+                  return (
+                    left -
+                    right
+                  );
+                }
               )
+
               .slice(0, 2)
+
               .map((job) => ({
                 title:
                   "Retraining job started",
@@ -157,32 +216,48 @@ export function AdminOverview() {
                   job.notes ||
                   "New retraining pipeline triggered.",
 
-                time: formatter.format(
-                  new Date(
-                    job.started_at
-                  )
-                ),
-              })),
-
-            ...(companiesData?.data || [])
-              .slice(0, 1)
-              .map((company) => ({
-                title:
-                  "Company registered",
-
-                desc: `${company.name} joined the platform.`,
-
-                time: company.created_at
-                  ? formatter.format(
-                      new Date(
-                        company.created_at
+                time:
+                  job.started_at ||
+                  job.created_at
+                    ? formatter.format(
+                        new Date(
+                          job.started_at ||
+                            job.created_at ||
+                            ""
+                        )
                       )
-                    )
-                  : "Recently",
+                    : "Recently",
               })),
+
+            ...(companiesData?.data ||
+              [])
+
+              .slice(0, 1)
+
+              .map(
+                (
+                  company: any
+                ) => ({
+                  title:
+                    "Company registered",
+
+                  desc: `${company.name} joined the platform.`,
+
+                  time:
+                    company.created_at
+                      ? formatter.format(
+                          new Date(
+                            company.created_at
+                          )
+                        )
+                      : "Recently",
+                })
+              ),
           ];
 
-        setActivity(recentActivity);
+        setActivity(
+          recentActivity
+        );
       } catch (error) {
         console.error(error);
       } finally {
@@ -196,17 +271,24 @@ export function AdminOverview() {
   return (
     <div
       style={{
-        display: "grid",
+        display:
+          "grid",
+
         gap: "1.5rem",
       }}
     >
       {/* page header */}
+
       <section>
         <p
           style={{
             ...labelStyle,
-            color: "var(--green-800)",
-            marginBottom: ".55rem",
+
+            color:
+              "var(--green-800)",
+
+            marginBottom:
+              ".55rem",
           }}
         >
           Super admin
@@ -217,15 +299,18 @@ export function AdminOverview() {
             fontFamily:
               "var(--font-display)",
 
-            fontSize: "3rem",
+            fontSize:
+              "3rem",
 
             lineHeight: 1,
 
-            letterSpacing: "-.04em",
+            letterSpacing:
+              "-.04em",
 
             fontWeight: 400,
 
-            marginBottom: ".9rem",
+            marginBottom:
+              ".9rem",
           }}
         >
           Platform control center
@@ -233,25 +318,36 @@ export function AdminOverview() {
 
         <p
           style={{
-            color: "var(--gray-600)",
+            color:
+              "var(--gray-600)",
+
             maxWidth: 760,
+
             lineHeight: 1.8,
-            fontSize: ".98rem",
+
+            fontSize:
+              ".98rem",
           }}
         >
-          Monitor ML performance,
-          manage companies, review
-          retraining jobs, and
-          supervise platform-wide
-          operations from one
-          centralized workspace.
+          Monitor ML
+          performance,
+          manage companies,
+          review retraining
+          jobs, and
+          supervise
+          platform-wide
+          operations from
+          one centralized
+          workspace.
         </p>
       </section>
 
       {/* metrics */}
+
       <section
         style={{
-          display: "grid",
+          display:
+            "grid",
 
           gridTemplateColumns:
             "repeat(auto-fit, minmax(220px, 1fr))",
@@ -267,7 +363,11 @@ export function AdminOverview() {
               : metrics.activeCompanies.toString()
           }
           sub="Currently operational"
-          icon={<span>🏢</span>}
+          icon={
+            <span>
+              🏢
+            </span>
+          }
         />
 
         <MetricCard
@@ -278,7 +378,11 @@ export function AdminOverview() {
               : metrics.predictions.toLocaleString()
           }
           sub="Platform-wide usage"
-          icon={<span>🌿</span>}
+          icon={
+            <span>
+              🌿
+            </span>
+          }
         />
 
         <MetricCard
@@ -289,7 +393,11 @@ export function AdminOverview() {
               : metrics.activeUsers.toString()
           }
           sub="Using the platform"
-          icon={<span>👥</span>}
+          icon={
+            <span>
+              👥
+            </span>
+          }
         />
 
         <MetricCard
@@ -300,35 +408,52 @@ export function AdminOverview() {
               : metrics.retrainingJobs.toString()
           }
           sub="Currently running"
-          icon={<span>⚡</span>}
+          icon={
+            <span>
+              ⚡
+            </span>
+          }
         />
       </section>
 
       {/* quick actions + activity */}
+
       <section
         style={{
-          display: "grid",
+          display:
+            "grid",
 
           gridTemplateColumns:
             "repeat(auto-fit, minmax(320px, 1fr))",
 
           gap: "1.5rem",
 
-          alignItems: "start",
+          alignItems:
+            "start",
         }}
       >
         {/* quick actions */}
-        <div style={sectionCardStyle}>
+
+        <div
+          style={
+            sectionCardStyle
+          }
+        >
           <div
             style={{
-              marginBottom: "1.25rem",
+              marginBottom:
+                "1.25rem",
             }}
           >
             <p
               style={{
                 ...labelStyle,
-                color: "var(--green-800)",
-                marginBottom: ".45rem",
+
+                color:
+                  "var(--green-800)",
+
+                marginBottom:
+                  ".45rem",
               }}
             >
               Navigation
@@ -339,11 +464,13 @@ export function AdminOverview() {
                 fontFamily:
                   "var(--font-display)",
 
-                fontSize: "1.7rem",
+                fontSize:
+                  "1.7rem",
 
                 fontWeight: 400,
 
-                letterSpacing: "-.03em",
+                letterSpacing:
+                  "-.03em",
               }}
             >
               Quick actions
@@ -352,7 +479,8 @@ export function AdminOverview() {
 
           <div
             style={{
-              display: "grid",
+              display:
+                "grid",
 
               gridTemplateColumns:
                 "repeat(auto-fit, minmax(220px, 1fr))",
@@ -360,100 +488,129 @@ export function AdminOverview() {
               gap: "1rem",
             }}
           >
-            {quickLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                style={{
-                  borderRadius: "18px",
-
-                  border:
-                    "1px solid var(--gray-100)",
-
-                  background:
-                    "var(--gray-50)",
-
-                  padding: "1.2rem",
-
-                  textDecoration:
-                    "none",
-
-                  transition:
-                    ".15s ease",
-
-                  display: "grid",
-
-                  gap: ".65rem",
-                }}
-              >
-                <div
+            {quickLinks.map(
+              (item) => (
+                <Link
+                  key={
+                    item.href
+                  }
+                  href={
+                    item.href
+                  }
                   style={{
-                    width: 42,
+                    borderRadius:
+                      "18px",
 
-                    height: 42,
-
-                    borderRadius: "12px",
+                    border:
+                      "1px solid var(--gray-100)",
 
                     background:
-                      "var(--green-100)",
+                      "var(--gray-50)",
 
-                    display: "flex",
+                    padding:
+                      "1.2rem",
 
-                    alignItems:
-                      "center",
+                    textDecoration:
+                      "none",
 
-                    justifyContent:
-                      "center",
+                    transition:
+                      ".15s ease",
 
-                    fontSize: "1.2rem",
+                    display:
+                      "grid",
+
+                    gap: ".65rem",
                   }}
                 >
-                  {item.icon}
-                </div>
-
-                <div>
-                  <p
+                  <div
                     style={{
-                      fontWeight: 600,
+                      width: 42,
 
-                      color:
-                        "var(--gray-900)",
+                      height: 42,
 
-                      marginBottom:
-                        ".25rem",
+                      borderRadius:
+                        "12px",
+
+                      background:
+                        "var(--green-100)",
+
+                      display:
+                        "flex",
+
+                      alignItems:
+                        "center",
+
+                      justifyContent:
+                        "center",
+
+                      fontSize:
+                        "1.2rem",
                     }}
                   >
-                    {item.title}
-                  </p>
+                    {
+                      item.icon
+                    }
+                  </div>
 
-                  <p
-                    style={{
-                      fontSize: ".85rem",
+                  <div>
+                    <p
+                      style={{
+                        fontWeight: 600,
 
-                      color:
-                        "var(--gray-400)",
-                    }}
-                  >
-                    Open workspace →
-                  </p>
-                </div>
-              </Link>
-            ))}
+                        color:
+                          "var(--gray-900)",
+
+                        marginBottom:
+                          ".25rem",
+                      }}
+                    >
+                      {
+                        item.title
+                      }
+                    </p>
+
+                    <p
+                      style={{
+                        fontSize:
+                          ".85rem",
+
+                        color:
+                          "var(--gray-400)",
+                      }}
+                    >
+                      Open
+                      workspace
+                      →
+                    </p>
+                  </div>
+                </Link>
+              )
+            )}
           </div>
         </div>
 
         {/* activity */}
-        <div style={sectionCardStyle}>
+
+        <div
+          style={
+            sectionCardStyle
+          }
+        >
           <div
             style={{
-              marginBottom: "1.25rem",
+              marginBottom:
+                "1.25rem",
             }}
           >
             <p
               style={{
                 ...labelStyle,
-                color: "var(--green-800)",
-                marginBottom: ".45rem",
+
+                color:
+                  "var(--green-800)",
+
+                marginBottom:
+                  ".45rem",
               }}
             >
               Activity
@@ -464,25 +621,34 @@ export function AdminOverview() {
                 fontFamily:
                   "var(--font-display)",
 
-                fontSize: "1.7rem",
+                fontSize:
+                  "1.7rem",
 
                 fontWeight: 400,
 
-                letterSpacing: "-.03em",
+                letterSpacing:
+                  "-.03em",
               }}
             >
-              Recent platform events
+              Recent
+              platform
+              events
             </h2>
           </div>
 
           <div
             style={{
-              display: "grid",
+              display:
+                "grid",
+
               gap: "1rem",
             }}
           >
             {activity.map(
-              (item, index) => (
+              (
+                item,
+                index
+              ) => (
                 <div
                   key={index}
                   style={{
@@ -491,7 +657,8 @@ export function AdminOverview() {
 
                     borderBottom:
                       index !==
-                      activity.length - 1
+                      activity.length -
+                        1
                         ? "1px solid var(--gray-100)"
                         : "none",
                   }}
@@ -507,48 +674,59 @@ export function AdminOverview() {
                         ".25rem",
                     }}
                   >
-                    {item.title}
+                    {
+                      item.title
+                    }
                   </p>
 
                   <p
                     style={{
-                      fontSize: ".9rem",
+                      fontSize:
+                        ".9rem",
 
                       color:
                         "var(--gray-600)",
 
-                      lineHeight: 1.7,
+                      lineHeight:
+                        1.7,
 
                       marginBottom:
                         ".4rem",
                     }}
                   >
-                    {item.desc}
+                    {
+                      item.desc
+                    }
                   </p>
 
                   <span
                     style={{
-                      fontSize: ".78rem",
+                      fontSize:
+                        ".78rem",
 
                       color:
                         "var(--gray-400)",
                     }}
                   >
-                    {item.time}
+                    {
+                      item.time
+                    }
                   </span>
                 </div>
               )
             )}
 
             {!loading &&
-              activity.length === 0 && (
+              activity.length ===
+                0 && (
                 <p
                   style={{
                     color:
                       "var(--gray-400)",
                   }}
                 >
-                  No recent activity.
+                  No recent
+                  activity.
                 </p>
               )}
           </div>

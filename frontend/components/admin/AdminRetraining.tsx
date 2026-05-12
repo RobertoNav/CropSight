@@ -2,48 +2,51 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import { MetricCard } from "@/components/ui/MetricCard";
 
 import {
   getRetrainingJobs,
   triggerRetraining,
+  type RetrainingJob,
 } from "@/services/admin.service";
 
-const sectionCardStyle: React.CSSProperties = {
-  background: "var(--white)",
-  borderRadius: "20px",
-  border: "1px solid rgba(45,106,45,0.08)",
-  boxShadow: "var(--shadow-card)",
-  padding: "1.4rem",
-};
+const sectionCardStyle: React.CSSProperties =
+  {
+    background:
+      "var(--white)",
 
-const labelStyle: React.CSSProperties = {
-  fontSize: ".75rem",
-  color: "var(--gray-400)",
-  textTransform: "uppercase",
-  letterSpacing: ".08em",
-  fontWeight: 600,
-};
+    borderRadius:
+      "20px",
 
-type RetrainingJob = {
-  id: string;
-  status:
-    | "running"
-    | "completed"
-    | "failed";
+    border:
+      "1px solid rgba(45,106,45,0.08)",
 
-  notes?: string;
+    boxShadow:
+      "var(--shadow-card)",
 
-  github_run_id?: string;
+    padding: "1.4rem",
+  };
 
-  started_at: string;
+const labelStyle: React.CSSProperties =
+  {
+    fontSize: ".75rem",
 
-  finished_at?: string | null;
+    color:
+      "var(--gray-400)",
 
-  triggered_by_name?: string;
-};
+    textTransform:
+      "uppercase",
+
+    letterSpacing:
+      ".08em",
+
+    fontWeight: 600,
+  };
 
 export function AdminRetraining() {
   const [loading, setLoading] =
@@ -52,9 +55,10 @@ export function AdminRetraining() {
   const [starting, setStarting] =
     useState(false);
 
-  const [jobs, setJobs] = useState<
-    RetrainingJob[]
-  >([]);
+  const [jobs, setJobs] =
+    useState<
+      RetrainingJob[]
+    >([]);
 
   async function loadJobs() {
     try {
@@ -96,59 +100,76 @@ export function AdminRetraining() {
   const runningJobs =
     jobs.filter(
       (job) =>
-        job.status === "running"
+        job.status ===
+          "running" ||
+        job.status ===
+          "pending"
     ).length;
 
   const completedJobs =
     jobs.filter(
       (job) =>
-        job.status === "completed"
+        job.status ===
+        "completed"
     ).length;
 
   const failedJobs =
     jobs.filter(
       (job) =>
-        job.status === "failed"
+        job.status ===
+        "failed"
     ).length;
 
   const formatter =
     new Intl.DateTimeFormat(
       "en-US",
       {
-        dateStyle: "medium",
-        timeStyle: "short",
+        dateStyle:
+          "medium",
+
+        timeStyle:
+          "short",
       }
     );
 
   return (
     <div
       style={{
-        display: "grid",
+        display:
+          "grid",
+
         gap: "1.5rem",
       }}
     >
       {/* header */}
+
       <section
         style={{
-          display: "flex",
+          display:
+            "flex",
+
           justifyContent:
             "space-between",
 
-          alignItems: "flex-start",
+          alignItems:
+            "flex-start",
 
           gap: "1rem",
 
-          flexWrap: "wrap",
+          flexWrap:
+            "wrap",
         }}
       >
         <div>
           <p
             style={{
               ...labelStyle,
+
               color:
                 "var(--green-800)",
 
-              marginBottom: ".55rem",
+              marginBottom:
+                ".55rem",
             }}
           >
             ML operations
@@ -159,7 +180,8 @@ export function AdminRetraining() {
               fontFamily:
                 "var(--font-display)",
 
-              fontSize: "3rem",
+              fontSize:
+                "3rem",
 
               lineHeight: 1,
 
@@ -168,7 +190,8 @@ export function AdminRetraining() {
 
               fontWeight: 400,
 
-              marginBottom: ".9rem",
+              marginBottom:
+                ".9rem",
             }}
           >
             Retraining jobs
@@ -183,14 +206,20 @@ export function AdminRetraining() {
 
               lineHeight: 1.8,
 
-              fontSize: ".98rem",
+              fontSize:
+                ".98rem",
             }}
           >
-            Trigger retraining
-            pipelines, supervise
-            training progress, and
-            monitor operational
-            health for platform ML
+            Trigger
+            retraining
+            pipelines,
+            supervise
+            training
+            progress, and
+            monitor
+            operational
+            health for
+            platform ML
             workflows.
           </p>
         </div>
@@ -200,7 +229,9 @@ export function AdminRetraining() {
           onClick={
             handleStartRetraining
           }
-          disabled={starting}
+          disabled={
+            starting
+          }
         >
           {starting
             ? "Starting..."
@@ -209,9 +240,11 @@ export function AdminRetraining() {
       </section>
 
       {/* metrics */}
+
       <section
         style={{
-          display: "grid",
+          display:
+            "grid",
 
           gridTemplateColumns:
             "repeat(auto-fit, minmax(220px, 1fr))",
@@ -227,7 +260,11 @@ export function AdminRetraining() {
               : runningJobs.toString()
           }
           sub="Currently processing"
-          icon={<span>⚙️</span>}
+          icon={
+            <span>
+              ⚙️
+            </span>
+          }
         />
 
         <MetricCard
@@ -238,7 +275,11 @@ export function AdminRetraining() {
               : completedJobs.toString()
           }
           sub="Successful pipelines"
-          icon={<span>✅</span>}
+          icon={
+            <span>
+              ✅
+            </span>
+          }
         />
 
         <MetricCard
@@ -249,7 +290,11 @@ export function AdminRetraining() {
               : failedJobs.toString()
           }
           sub="Require review"
-          icon={<span>⚠️</span>}
+          icon={
+            <span>
+              ⚠️
+            </span>
+          }
         />
 
         <MetricCard
@@ -260,27 +305,40 @@ export function AdminRetraining() {
               : jobs.length.toString()
           }
           sub="Historical runs"
-          icon={<span>🧠</span>}
+          icon={
+            <span>
+              🧠
+            </span>
+          }
         />
       </section>
 
       {/* jobs */}
-      <section style={sectionCardStyle}>
+
+      <section
+        style={
+          sectionCardStyle
+        }
+      >
         <div
           style={{
-            marginBottom: "1.4rem",
+            marginBottom:
+              "1.4rem",
           }}
         >
           <p
             style={{
               ...labelStyle,
+
               color:
                 "var(--green-800)",
 
-              marginBottom: ".35rem",
+              marginBottom:
+                ".35rem",
             }}
           >
-            Pipeline monitoring
+            Pipeline
+            monitoring
           </p>
 
           <h2
@@ -288,7 +346,8 @@ export function AdminRetraining() {
               fontFamily:
                 "var(--font-display)",
 
-              fontSize: "1.7rem",
+              fontSize:
+                "1.7rem",
 
               fontWeight: 400,
 
@@ -296,138 +355,154 @@ export function AdminRetraining() {
                 "-.03em",
             }}
           >
-            Training activity
+            Training
+            activity
           </h2>
         </div>
 
         <div
           style={{
-            display: "grid",
+            display:
+              "grid",
+
             gap: "1rem",
           }}
         >
-          {jobs.map((job) => (
-            <article
-              key={job.id}
-              style={{
-                border:
-                  "1px solid var(--gray-100)",
-
-                borderRadius: "18px",
-
-                padding: "1.1rem",
-
-                background:
-                  "linear-gradient(180deg, rgba(244,250,244,0.45), var(--white))",
-              }}
-            >
-              <div
+          {jobs.map(
+            (job) => (
+              <article
+                key={job.id}
                 style={{
-                  display: "flex",
+                  border:
+                    "1px solid var(--gray-100)",
 
-                  justifyContent:
-                    "space-between",
+                  borderRadius:
+                    "18px",
 
-                  gap: "1rem",
+                  padding:
+                    "1.1rem",
 
-                  flexWrap: "wrap",
-
-                  marginBottom: ".9rem",
+                  background:
+                    "linear-gradient(180deg, rgba(244,250,244,0.45), var(--white))",
                 }}
               >
-                <div>
-                  <h3
-                    style={{
-                      fontWeight: 600,
+                <div
+                  style={{
+                    display:
+                      "flex",
 
-                      color:
-                        "var(--gray-900)",
+                    justifyContent:
+                      "space-between",
 
-                      marginBottom:
-                        ".25rem",
-                    }}
-                  >
-                    Retraining job
-                  </h3>
+                    gap: "1rem",
 
-                  <p
-                    style={{
-                      color:
-                        "var(--gray-400)",
+                    flexWrap:
+                      "wrap",
 
-                      fontSize: ".85rem",
-                    }}
-                  >
-                    {job.id}
-                    {job.github_run_id &&
-                      ` · GitHub #${job.github_run_id}`}
-                  </p>
+                    marginBottom:
+                      ".9rem",
+                  }}
+                >
+                  <div>
+                    <h3
+                      style={{
+                        fontWeight: 600,
+
+                        color:
+                          "var(--gray-900)",
+
+                        marginBottom:
+                          ".25rem",
+                      }}
+                    >
+                      Retraining
+                      job
+                    </h3>
+
+                    <p
+                      style={{
+                        color:
+                          "var(--gray-400)",
+
+                        fontSize:
+                          ".85rem",
+                      }}
+                    >
+                      {job.id}
+                    </p>
+                  </div>
+
+                  <JobStatus
+                    status={
+                      job.status
+                    }
+                  />
                 </div>
 
-                <JobStatus
-                  status={job.status}
-                />
-              </div>
+                <div
+                  style={{
+                    display:
+                      "grid",
 
-              <div
-                style={{
-                  display: "grid",
-                  gap: ".65rem",
-                }}
-              >
-                <InfoRow
-                  label="Triggered by"
-                  value={
-                    job.triggered_by_name ||
-                    "Unknown"
-                  }
-                />
-
-                <InfoRow
-                  label="Started at"
-                  value={formatter.format(
-                    new Date(
-                      job.started_at
-                    )
-                  )}
-                />
-
-                <InfoRow
-                  label="Finished at"
-                  value={
-                    job.finished_at
-                      ? formatter.format(
-                          new Date(
-                            job.finished_at
+                    gap: ".65rem",
+                  }}
+                >
+                  <InfoRow
+                    label="Started at"
+                    value={
+                      job.created_at
+                        ? formatter.format(
+                            new Date(
+                              job.created_at
+                            )
                           )
-                        )
-                      : "Still running"
-                  }
-                />
+                        : "Unknown"
+                    }
+                  />
 
-                <InfoRow
-                  label="Notes"
-                  value={
-                    job.notes ||
-                    "No notes provided"
-                  }
-                />
-              </div>
-            </article>
-          ))}
+                  <InfoRow
+                    label="Finished at"
+                    value={
+                      job.completed_at
+                        ? formatter.format(
+                            new Date(
+                              job.completed_at
+                            )
+                          )
+                        : "Still running"
+                    }
+                  />
+
+                  <InfoRow
+                    label="Notes"
+                    value={
+                      job.notes ||
+                      "No notes provided"
+                    }
+                  />
+                </div>
+              </article>
+            )
+          )}
 
           {!loading &&
-            jobs.length === 0 && (
+            jobs.length ===
+              0 && (
               <div
                 style={{
-                  padding: "2rem",
-                  textAlign: "center",
+                  padding:
+                    "2rem",
+
+                  textAlign:
+                    "center",
+
                   color:
                     "var(--gray-400)",
                 }}
               >
-                No retraining jobs
-                found.
+                No
+                retraining
+                jobs found.
               </div>
             )}
         </div>
@@ -441,23 +516,31 @@ function InfoRow({
   value,
 }: {
   label: string;
+
   value: string;
 }) {
   return (
     <div
       style={{
-        display: "flex",
+        display:
+          "flex",
+
         justifyContent:
           "space-between",
+
         gap: "1rem",
-        flexWrap: "wrap",
+
+        flexWrap:
+          "wrap",
       }}
     >
       <span
         style={{
           color:
             "var(--gray-400)",
-          fontSize: ".84rem",
+
+          fontSize:
+            ".84rem",
         }}
       >
         {label}
@@ -467,9 +550,14 @@ function InfoRow({
         style={{
           color:
             "var(--gray-900)",
+
           fontWeight: 500,
-          fontSize: ".88rem",
-          textAlign: "right",
+
+          fontSize:
+            ".88rem",
+
+          textAlign:
+            "right",
         }}
       >
         {value}
@@ -482,52 +570,82 @@ function JobStatus({
   status,
 }: {
   status:
+    | "pending"
     | "running"
     | "completed"
     | "failed";
 }) {
   const tones = {
+    pending: {
+      bg: "#fff7e6",
+
+      color:
+        "#d68910",
+
+      label:
+        "Pending",
+    },
+
     running: {
       bg: "#eef7ff",
-      color: "#1a4480",
-      label: "Running",
+
+      color:
+        "#1a4480",
+
+      label:
+        "Running",
     },
 
     completed: {
       bg: "var(--green-100)",
+
       color:
         "var(--green-800)",
-      label: "Completed",
+
+      label:
+        "Completed",
     },
 
     failed: {
       bg: "#fdf2f2",
-      color: "var(--error)",
-      label: "Failed",
+
+      color:
+        "var(--error)",
+
+      label:
+        "Failed",
     },
   };
 
-  const tone = tones[status];
+  const tone =
+    tones[status];
 
   return (
     <span
       style={{
-        display: "inline-flex",
+        display:
+          "inline-flex",
 
-        alignItems: "center",
+        alignItems:
+          "center",
 
         justifyContent:
           "center",
 
-        padding: ".38rem .7rem",
+        padding:
+          ".38rem .7rem",
 
-        borderRadius: "999px",
+        borderRadius:
+          "999px",
 
-        background: tone.bg,
+        background:
+          tone.bg,
 
-        color: tone.color,
+        color:
+          tone.color,
 
-        fontSize: ".75rem",
+        fontSize:
+          ".75rem",
 
         fontWeight: 600,
       }}
