@@ -28,8 +28,11 @@ from app.services.refresh_token_cleanup import (
 async def lifespan(app: FastAPI):
     # Startup
     print("🌱 CropSight Backend iniciando...")
-    async with AsyncSessionLocal() as db:
-        await delete_expired_refresh_tokens(db)
+    try:
+        async with AsyncSessionLocal() as db:
+            await delete_expired_refresh_tokens(db)
+    except Exception as exc:
+        print(f"⚠️  Startup cleanup skipped (DB not ready?): {exc}")
 
     cleanup_task = asyncio.create_task(run_refresh_token_cleanup())
     try:
