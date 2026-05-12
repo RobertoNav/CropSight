@@ -34,6 +34,7 @@ YAML
 
 
     environment_variables = {
+        AMPLIFY_MONOREPO_APP_ROOT = "frontend"
         NEXT_PUBLIC_API_URL = local.frontend_api_url
         BACKEND_URL         = var.backend_url
     }
@@ -56,6 +57,7 @@ resource "aws_amplify_branch" "frontend" {
     stage             = var.env == "prod" ? "PRODUCTION" : "DEVELOPMENT"
 
     environment_variables = {
+        AMPLIFY_MONOREPO_APP_ROOT = "frontend"
         NEXT_PUBLIC_API_URL = local.frontend_api_url
         BACKEND_URL         = var.backend_url
     }
