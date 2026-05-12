@@ -42,7 +42,7 @@ module "frontend" {
   source = "./modules/frontend"
 
   env            = var.env
-  github_token   = var.github_token
+  github_token   = var.amplify_github_token
   repository_url = var.repository_url
   branch_name    = var.env == "prod" ? "main" : var.env
   backend_url    = "http://${module.compute.alb_dns_name}"

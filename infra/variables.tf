@@ -127,3 +127,9 @@ variable "repository_url" {
   type        = string
   default     = "https://github.com/RobertoNav/CropSight"
 }
+
+variable "amplify_github_token" {
+  description = "GitHub token used by AWS Amplify to access the repository"
+  type        = string
+  sensitive   = true
+}
