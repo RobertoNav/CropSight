@@ -36,11 +36,6 @@
       ]
     },
 
-<<<<<<< HEAD
-    "ignoreDeprecations": "5.0",
-
-=======
->>>>>>> frontend
     "plugins": [
       {
         "name": "next"
