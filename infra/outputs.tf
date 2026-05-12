@@ -67,3 +67,18 @@ output "inference_url" {
   description = "Private base URL of the ML inference service"
   value       = module.inference.inference_url
 }
+
+output "amplify_app_id" {
+  description = "Amplify app ID"
+  value       = module.frontend.amplify_app_id
+}
+
+output "amplify_branch_name" {
+  description = "Amplify branch name"
+  value       = module.frontend.amplify_branch_name
+}
+
+output "amplify_default_domain" {
+  description = "Amplify default domain"
+  value       = module.frontend.amplify_default_domain
+}

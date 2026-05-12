@@ -38,6 +38,17 @@ module "compute" {
   inference_service_url = "http://inference.cropsight-${var.env}.internal:8000"
 }
 
+module "frontend" {
+  source = "./modules/frontend"
+
+  env            = var.env
+  github_token   = var.github_token
+  repository_url = var.repository_url
+  branch_name    = var.env == "prod" ? "main" : var.env
+  backend_url    = "http://${module.compute.alb_dns_name}"
+}
+
+
 module "database" {
   source = "./modules/database"
 

@@ -121,3 +121,9 @@ variable "inference_crops" {
   type        = string
   default     = "tomato,potato,corn,grape"
 }
+
+variable "repository_url" {
+  description = "GitHub repository URL used by Amplify"
+  type        = string
+  default     = "https://github.com/RobertoNav/CropSight"
+}
