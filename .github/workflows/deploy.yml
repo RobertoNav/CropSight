@@ -2,9 +2,6 @@ name: Build and Publish Backend Image
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - dev
 
 env:
   AWS_REGION: "us-east-1"
