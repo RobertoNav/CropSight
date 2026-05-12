@@ -14,27 +14,37 @@ const PUBLIC_PATHS = [
 
 /* ───────────────── HELPERS ───────────────── */
 
-function isPublic(pathname: string): boolean {
+function isPublic(
+  pathname: string
+): boolean {
   return (
-    PUBLIC_PATHS.includes(pathname) ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon") ||
+    PUBLIC_PATHS.includes(
+      pathname
+    ) ||
+    pathname.startsWith(
+      "/_next"
+    ) ||
+    pathname.startsWith(
+      "/favicon"
+    ) ||
     pathname.match(
       /\.(png|jpg|jpeg|gif|svg|ico|webp|css|js)$/
     ) !== null
   );
 }
 
-function parseJwt(token: string) {
+function parseJwt(
+  token: string
+) {
   try {
     const payload =
       token.split(".")[1];
 
+    if (!payload)
+      return null;
+
     return JSON.parse(
-      Buffer.from(
-        payload,
-        "base64"
-      ).toString()
+      atob(payload)
     );
   } catch {
     return null;
@@ -50,10 +60,24 @@ export function middleware(
     request.nextUrl;
 
   /*
+    Auth pages
+  */
+
+  const isAuthPage =
+    pathname === "/login" ||
+    pathname ===
+      "/register" ||
+    pathname ===
+      "/register/company";
+
+  /*
     Public routes
   */
 
-  if (isPublic(pathname)) {
+  if (
+    isPublic(pathname) &&
+    !isAuthPage
+  ) {
     return NextResponse.next();
   }
 
@@ -71,6 +95,14 @@ export function middleware(
   */
 
   if (!token) {
+    /*
+      Allow auth pages
+    */
+
+    if (isAuthPage) {
+      return NextResponse.next();
+    }
+
     const loginUrl =
       new URL(
         "/login",
@@ -115,23 +147,34 @@ export function middleware(
       "refresh_token"
     );
 
+    response.cookies.delete(
+      "role"
+    );
+
     return response;
   }
 
-  const role = payload.role;
+  /*
+    Role
+    fallback to cookie
+  */
+
+  const role =
+    payload.role ||
+    request.cookies.get(
+      "role"
+    )?.value;
 
   /*
     Redirect authenticated users
     away from auth pages
   */
 
-  if (
-    pathname === "/login" ||
-    pathname === "/register" ||
-    pathname ===
-      "/register/company"
-  ) {
-    if (role === "super_admin") {
+  if (isAuthPage) {
+    if (
+      role ===
+      "super_admin"
+    ) {
       return NextResponse.redirect(
         new URL(
           "/admin",

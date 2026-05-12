@@ -71,10 +71,23 @@ export function AuthProvider({
   useEffect(() => {
     async function loadUser() {
       try {
+        /*
+          token desde localStorage
+          o cookies
+        */
+
         const token =
           localStorage.getItem(
             "access_token"
-          );
+          ) ||
+          document.cookie
+            .split("; ")
+            .find((row) =>
+              row.startsWith(
+                "access_token="
+              )
+            )
+            ?.split("=")[1];
 
         if (!token) {
           setLoading(false);
@@ -82,12 +95,13 @@ export function AuthProvider({
         }
 
         /*
-          Primero intenta restaurar
-          desde localStorage
+          Restaurar rápido desde localStorage
         */
 
         const storedUser =
-          localStorage.getItem("user");
+          localStorage.getItem(
+            "user"
+          );
 
         if (storedUser) {
           setUser(
@@ -96,10 +110,11 @@ export function AuthProvider({
         }
 
         /*
-          Luego sincroniza con backend
+          Sincronizar con backend
         */
 
-        const me = await getMe();
+        const me =
+          await getMe();
 
         setUser(me);
 
@@ -115,6 +130,10 @@ export function AuthProvider({
       } catch (error) {
         console.error(error);
 
+        /*
+          limpiar localStorage
+        */
+
         localStorage.removeItem(
           "access_token"
         );
@@ -123,9 +142,23 @@ export function AuthProvider({
           "refresh_token"
         );
 
-        localStorage.removeItem("user");
+        localStorage.removeItem(
+          "user"
+        );
 
-        localStorage.removeItem("role");
+        localStorage.removeItem(
+          "role"
+        );
+
+        /*
+          limpiar cookies
+        */
+
+        document.cookie =
+          "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+        document.cookie =
+          "refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
 
         setUser(null);
       } finally {
@@ -138,81 +171,110 @@ export function AuthProvider({
 
   /* ───────────────── LOGIN ───────────────── */
 
-/* ───────────────── LOGIN ───────────────── */
+  function login(
+    data: LoginPayload
+  ) {
+    /*
+      localStorage
+    */
 
-function login(
-  data: LoginPayload
-) {
-  localStorage.setItem(
-    "access_token",
-    data.access_token
-  );
-
-  localStorage.setItem(
-    "refresh_token",
-    data.refresh_token
-  );
-
-  localStorage.setItem(
-    "user",
-    JSON.stringify(data.user)
-  );
-
-  localStorage.setItem(
-    "role",
-    data.user.role
-  );
-
-  /*
-    COOKIE PARA MIDDLEWARE
-  */
-
-  document.cookie =
-    `access_token=${data.access_token}; path=/`;
-
-  setUser(data.user);
-}
-
-/* ───────────────── LOGOUT ───────────────── */
-
-async function logout() {
-  try {
-    await logoutService();
-  } catch (error) {
-    console.error(error);
-  } finally {
-    localStorage.removeItem(
-      "access_token"
+    localStorage.setItem(
+      "access_token",
+      data.access_token
     );
 
-    localStorage.removeItem(
-      "refresh_token"
+    localStorage.setItem(
+      "refresh_token",
+      data.refresh_token
     );
 
-    localStorage.removeItem("user");
+    localStorage.setItem(
+      "user",
+      JSON.stringify(data.user)
+    );
 
-    localStorage.removeItem("role");
+    localStorage.setItem(
+      "role",
+      data.user.role
+    );
 
     /*
-      BORRAR COOKIE
+      cookies para middleware
     */
 
     document.cookie =
-      "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      `access_token=${data.access_token}; path=/; SameSite=Lax`;
 
-    setUser(null);
+    document.cookie =
+      `refresh_token=${data.refresh_token}; path=/; SameSite=Lax`;
 
-    window.location.href =
-      "/login";
+    /*
+      opcional:
+      guardar role también
+      por si JWT no trae role
+    */
+
+    document.cookie =
+      `role=${data.user.role}; path=/; SameSite=Lax`;
+
+    setUser(data.user);
   }
-}
+
+  /* ───────────────── LOGOUT ───────────────── */
+
+  async function logout() {
+    try {
+      await logoutService();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      /*
+        limpiar localStorage
+      */
+
+      localStorage.removeItem(
+        "access_token"
+      );
+
+      localStorage.removeItem(
+        "refresh_token"
+      );
+
+      localStorage.removeItem(
+        "user"
+      );
+
+      localStorage.removeItem(
+        "role"
+      );
+
+      /*
+        limpiar cookies
+      */
+
+      document.cookie =
+        "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+      document.cookie =
+        "refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+      document.cookie =
+        "role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+      setUser(null);
+
+      window.location.href =
+        "/login";
+    }
+  }
 
   return (
     <AuthContext.Provider
       value={{
         user,
         loading,
-        isAuthenticated: !!user,
+        isAuthenticated:
+          !!user,
         login,
         logout,
       }}
