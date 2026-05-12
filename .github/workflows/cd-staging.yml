@@ -56,6 +56,19 @@ jobs:
             -auto-approve \
             -no-color
 
+      - name: Trigger Amplify frontend deploy - staging
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          APP_ID=$(terraform output -raw amplify_app_id)
+          BRANCH_NAME=$(terraform output -raw amplify_branch_name)
+
+          aws amplify start-job \
+            --app-id "$APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --job-type RELEASE \
+            --region "${AWS_REGION}"
+
+
       - name: Capture staging outputs
         id: staging-outputs
         working-directory: ${{ env.WORKING_DIR }}

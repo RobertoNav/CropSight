@@ -110,6 +110,19 @@ jobs:
             -var-file=environments/dev.tfvars \
             -auto-approve \
             -no-color
+
+      - name: Trigger Amplify frontend deploy - dev
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          APP_ID=$(terraform output -raw amplify_app_id)
+          BRANCH_NAME=$(terraform output -raw amplify_branch_name)
+
+          aws amplify start-job \
+            --app-id "$APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --job-type RELEASE \
+            --region "${AWS_REGION}"
+
       
       - name: Log in to Amazon ECR
         id: login-ecr-dev
@@ -180,6 +193,19 @@ jobs:
             -var-file=environments/prod.tfvars \
             -auto-approve \
             -no-color
+
+      - name: Trigger Amplify frontend deploy - prod
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          APP_ID=$(terraform output -raw amplify_app_id)
+          BRANCH_NAME=$(terraform output -raw amplify_branch_name)
+
+          aws amplify start-job \
+            --app-id "$APP_ID" \
+            --branch-name "$BRANCH_NAME" \
+            --job-type RELEASE \
+            --region "${AWS_REGION}"
+
 
       - name: Log in to Amazon ECR
         id: login-ecr-prod
