@@ -370,13 +370,21 @@ mkdir -p /opt/cropsight
 fetch_ssm_parameter() {
   local parameter_name="$1"
   local parameter_value=""
+  local attempt=0
   until parameter_value=$(/usr/local/bin/aws ssm get-parameter \
     --name "$parameter_name" \
     --query "Parameter.Value" \
     --output text \
-    --region "${var.aws_region}" 2>/dev/null); do
+    --region "${var.aws_region}"); do
+    attempt=$((attempt + 1))
+    echo "SSM fetch attempt $attempt failed for $parameter_name" >&2
+    if [ "$attempt" -ge 30 ]; then
+      echo "ERROR: Could not fetch SSM parameter $parameter_name after $attempt attempts. Aborting." >&2
+      exit 1
+    fi
     sleep 10
   done
+  echo "SSM fetch OK: $parameter_name" >&2
   echo "$parameter_value"
 }
 
