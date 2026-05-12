@@ -52,7 +52,7 @@ export interface RetrainingJob {
 
   notes?: string;
 
-  created_at: string;
+  created_at: string | null;
 
   completed_at?: string | null;
 }
