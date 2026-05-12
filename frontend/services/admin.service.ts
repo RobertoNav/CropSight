@@ -54,6 +54,8 @@ export interface RetrainingJob {
 
   created_at: string | null;
 
+  started_at: string | null;
+
   completed_at?: string | null;
 }
 
