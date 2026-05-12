@@ -5,8 +5,6 @@ on:
   push:
     branches:
       - dev
-    paths:
-      - "backend/**"
 
 env:
   AWS_REGION: "us-east-1"
