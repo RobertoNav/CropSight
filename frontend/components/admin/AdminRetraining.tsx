@@ -487,11 +487,18 @@ function JobStatus({
   status,
 }: {
   status:
+    | "pending"
     | "running"
     | "completed"
     | "failed";
 }) {
   const tones = {
+    pending: {
+      bg: "#fff7ed",
+      color: "#9a3412",
+      label: "Pending",
+    },
+
     running: {
       bg: "#eef7ff",
       color: "#1a4480",
