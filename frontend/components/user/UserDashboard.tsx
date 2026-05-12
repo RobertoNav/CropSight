@@ -24,22 +24,31 @@ import {
   getPredictions,
 } from "@/services/predictions.service";
 
+import {
+  getCompanyById,
+} from "@/services/company.service";
+
 interface UserProfile {
   id: string;
+
   name: string;
+
   email: string;
 
-  company?: {
-    name: string;
-  };
+  role?: string;
+
+  company_id?: string | null;
 
   created_at?: string;
 }
 
 interface PredictionItem {
   id: string;
+
   label: string;
+
   confidence: number;
+
   created_at: string;
 }
 
@@ -94,6 +103,11 @@ export function UserDashboard() {
     );
 
   const [
+    companyName,
+    setCompanyName,
+  ] = useState("");
+
+  const [
     predictions,
     setPredictions,
   ] = useState<
@@ -135,12 +149,52 @@ export function UserDashboard() {
           ),
         ]);
 
+      console.log(
+        "ME RESPONSE",
+        userResponse
+      );
+
+      console.log(
+        "PREDICTIONS RESPONSE",
+        predictionsResponse
+      );
+
       setUser(userResponse);
+
+      /*
+        LOAD COMPANY
+      */
+
+      if (
+        userResponse?.company_id
+      ) {
+        try {
+          const company =
+            await getCompanyById(
+              userResponse.company_id
+            );
+
+          setCompanyName(
+            company?.name ||
+              ""
+          );
+        } catch (
+          companyError
+        ) {
+          console.error(
+            companyError
+          );
+        }
+      }
+
+      /*
+        LOAD PREDICTIONS
+      */
 
       setPredictions(
         (
-          predictionsResponse
-            ?.data || []
+          predictionsResponse ||
+          []
         ).map(
           (
             prediction: any
@@ -184,6 +238,9 @@ export function UserDashboard() {
         localStorage.removeItem(
           "role"
         );
+
+        document.cookie =
+          "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
 
         router.replace(
           "/login"
@@ -300,9 +357,7 @@ export function UserDashboard() {
               <InfoTile
                 label="Company"
                 value={
-                  user
-                    ?.company
-                    ?.name ||
+                  companyName ||
                   "No company"
                 }
               />
