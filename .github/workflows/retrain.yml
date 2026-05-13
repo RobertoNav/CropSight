@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       crop:
-        description: "Crop to retrain (tomato / potato / corn / grape)"
+        description: "Crop to retrain"
         required: true
         type: choice
-        options: [tomato, potato, corn, grape]
+        options: [tomato, potato, corn, pepper]
       epochs:
         description: "Number of training epochs"
         required: false
@@ -20,6 +20,9 @@ on:
 jobs:
   retrain:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml
 
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +44,8 @@ jobs:
 
       - name: Download processed data from S3
         run: |
-          aws s3 sync s3://${{ secrets.S3_BUCKET }}/data/processed/${{ github.event.inputs.crop }} \
+          aws s3 sync \
+            s3://${{ secrets.S3_BUCKET }}/processed/${{ github.event.inputs.crop }} \
             data/processed/${{ github.event.inputs.crop }}
 
       - name: Run training
@@ -49,20 +53,15 @@ jobs:
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
         run: |
           python -m src.training.train \
-            --crop        ${{ github.event.inputs.crop }} \
-            --data_dir    data/processed/${{ github.event.inputs.crop }} \
-            --epochs      ${{ github.event.inputs.epochs }} \
-            --lr          ${{ github.event.inputs.learning_rate }}
+            --crop     ${{ github.event.inputs.crop }} \
+            --data_dir data/processed/${{ github.event.inputs.crop }} \
+            --epochs   ${{ github.event.inputs.epochs }} \
+            --lr       ${{ github.event.inputs.learning_rate }}
 
-      - name: Upload trained model to S3
+      - name: Register best model in MLflow
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
         run: |
-          MODEL_PATH="models/${{ github.event.inputs.crop }}/model.pt"
-          S3_PATH="s3://${{ secrets.S3_BUCKET }}/models/${{ github.sha }}/${{ github.event.inputs.crop }}/model.pt"
-
-          echo "Uploading model to $S3_PATH"
-          aws s3 cp $MODEL_PATH $S3_PATH
-
-      - name: Update latest model pointer
-        run: |
-          aws s3 cp models/${{ github.event.inputs.crop }}/model.pt \
-            s3://${{ secrets.S3_BUCKET }}/models/latest/${{ github.event.inputs.crop }}/model.pt
+          python -m src.registry.register \
+            --crop  ${{ github.event.inputs.crop }} \
+            --stage Staging
