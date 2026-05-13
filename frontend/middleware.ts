@@ -3,11 +3,15 @@ import type { NextRequest } from "next/server";
 
 const PUBLIC_PATHS = [
   "/",
+  "/index.html",
+
   "/login",
   "/register",
   "/register/company",
+
   "/forgot-password",
   "/reset-password",
+
   "/403",
   "/404",
 ];
@@ -21,12 +25,18 @@ function isPublic(
     PUBLIC_PATHS.includes(
       pathname
     ) ||
+
+    pathname ===
+      "/index.html" ||
+
     pathname.startsWith(
       "/_next"
     ) ||
+
     pathname.startsWith(
       "/favicon"
     ) ||
+
     pathname.match(
       /\.(png|jpg|jpeg|gif|svg|ico|webp|css|js)$/
     ) !== null
@@ -60,7 +70,7 @@ export function middleware(
     request.nextUrl;
 
   /*
-    Auth pages
+    AUTH PAGES
   */
 
   const isAuthPage =
@@ -71,18 +81,15 @@ export function middleware(
       "/register/company";
 
   /*
-    Public routes
+    ALLOW PUBLIC ROUTES
   */
 
-  if (
-    isPublic(pathname) &&
-    !isAuthPage
-  ) {
+  if (isPublic(pathname)) {
     return NextResponse.next();
   }
 
   /*
-    Read token
+    TOKEN
   */
 
   const token =
@@ -91,12 +98,12 @@ export function middleware(
     )?.value;
 
   /*
-    No token
+    NO TOKEN
   */
 
   if (!token) {
     /*
-      Allow auth pages
+      allow auth pages
     */
 
     if (isAuthPage) {
@@ -120,14 +127,14 @@ export function middleware(
   }
 
   /*
-    Decode JWT
+    DECODE JWT
   */
 
   const payload =
     parseJwt(token);
 
   /*
-    Invalid token
+    INVALID TOKEN
   */
 
   if (!payload) {
@@ -155,8 +162,7 @@ export function middleware(
   }
 
   /*
-    Role
-    fallback to cookie
+    ROLE
   */
 
   const role =
@@ -166,8 +172,8 @@ export function middleware(
     )?.value;
 
   /*
-    Redirect authenticated users
-    away from auth pages
+    REDIRECT AUTH USERS
+    AWAY FROM LOGIN/REGISTER
   */
 
   if (isAuthPage) {
@@ -204,7 +210,7 @@ export function middleware(
   }
 
   /*
-    Admin routes
+    ADMIN ROUTES
   */
 
   if (
@@ -226,7 +232,7 @@ export function middleware(
   }
 
   /*
-    Company routes
+    COMPANY ROUTES
   */
 
   if (
@@ -250,7 +256,7 @@ export function middleware(
   }
 
   /*
-    User routes
+    USER ROUTES
   */
 
   if (
