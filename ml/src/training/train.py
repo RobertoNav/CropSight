@@ -88,13 +88,24 @@ def save_confusion_matrix(labels, preds, class_names, path="confusion_matrix.png
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+def _resolve_data_dir(args) -> str:
+    if args.data_dir:
+        return args.data_dir
+    import subprocess, tempfile
+    local = f"/tmp/cropsight-data/{args.crop}"
+    s3_path = f"s3://{args.s3_bucket}/processed/{args.crop}"
+    print(f"[train] Syncing {s3_path} -> {local}")
+    subprocess.run(["aws", "s3", "sync", s3_path, local], check=True)
+    return local
+
+
 def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[train] Device: {device} | Crop: {args.crop}")
 
+    data_dir = _resolve_data_dir(args)
     train_loader, val_loader, test_loader, class_names = build_dataloaders(
-        crop=args.crop,
-        s3_bucket=args.s3_bucket,
+        data_dir=data_dir,
         batch_size=args.batch_size,
     )
     print(f"[train] Classes ({len(class_names)}): {class_names}")
@@ -156,6 +167,11 @@ def main(args):
         cm_path = save_confusion_matrix(test_labels, test_preds, class_names)
         mlflow.log_artifact(cm_path)
 
+        import json
+        with open("class_names.json", "w") as f:
+            json.dump(class_names, f)
+        mlflow.log_artifact("class_names.json")
+
         mlflow.pytorch.log_model(model, artifact_path="model")
 
         print(f"\n[train] Run complete | test_acc={test_acc:.4f} test_f1={test_f1:.4f}")
@@ -165,7 +181,8 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--crop",           required=True, choices=["tomato", "potato", "corn", "pepper"])
-    parser.add_argument("--s3_bucket",      default=os.getenv("S3_BUCKET"))
+    parser.add_argument("--data_dir",       default=None,  help="Local path to crop data (ImageFolder layout)")
+    parser.add_argument("--s3_bucket",      default=os.getenv("S3_BUCKET"), help="S3 bucket to sync data from if --data_dir not given")
     parser.add_argument("--epochs",         type=int,   default=15)
     parser.add_argument("--lr",             type=float, default=1e-4)
     parser.add_argument("--batch_size",     type=int,   default=32)

@@ -5,7 +5,8 @@ ENV PYTHONPATH=/app
 
 # Dependencias del sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc && \
+    libpq-dev gcc curl && \
+    curl -sS https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o /app/global-bundle.pem && \
     rm -rf /var/lib/apt/lists/*
 
 # Dependencias Python
