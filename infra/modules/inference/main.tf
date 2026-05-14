@@ -56,14 +56,34 @@ resource "aws_iam_role" "inference" {
 }
 
 data "aws_iam_policy_document" "s3_read" {
+  # Read from MLflow artifact bucket (load registered models at runtime)
+  # and from the dataset bucket (sync processed/<crop>/ for retraining
+  # driven via SSM RunCommand).
   statement {
+    sid    = "ReadMLflowAndDataset"
     effect = "Allow"
-
     actions = [
       "s3:GetObject",
       "s3:ListBucket",
     ]
+    resources = [
+      var.mlflow_bucket_arn,
+      "${var.mlflow_bucket_arn}/*",
+      var.dataset_bucket_arn,
+      "${var.dataset_bucket_arn}/*",
+    ]
+  }
 
+  # Training jobs running here log artifacts directly to S3 (MLflow client
+  # uploads to the artifact root). Without this, mlflow.log_artifact() fails.
+  statement {
+    sid    = "WriteMLflowArtifacts"
+    effect = "Allow"
+    actions = [
+      "s3:PutObject",
+      "s3:PutObjectAcl",
+      "s3:DeleteObject",
+    ]
     resources = [
       var.mlflow_bucket_arn,
       "${var.mlflow_bucket_arn}/*",

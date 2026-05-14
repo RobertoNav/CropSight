@@ -122,6 +122,12 @@ variable "mlflow_instance_type" {
   default     = "t3.small"
 }
 
+variable "dataset_bucket_arn" {
+  description = "ARN of the externally-managed S3 bucket holding processed training data."
+  type        = string
+  default     = "arn:aws:s3:::cropsight-dataset-ml"
+}
+
 variable "inference_crops" {
   description = "Comma-separated crops loadeds by inference service"
   type        = string

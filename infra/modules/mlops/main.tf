@@ -96,7 +96,13 @@ resource "aws_instance" "mlflow" {
     python3.11 -m pip install --upgrade pip
     python3.11 -m pip install mlflow boto3 psycopg2-binary
 
-    # Create MLflow systemd service
+    # Create MLflow systemd service. Notes:
+    #   --workers 1     mlflow 3.x defaults to 4 uvicorn workers which OOMs on
+    #                   anything below t3.medium. 1 worker is fine for dev.
+    #   MLFLOW_SERVER_ALLOWED_HOSTS=*   mlflow 3.x rejects requests whose Host
+    #                   header isn't in its trusted list ("Invalid Host header
+    #                   - possible DNS rebinding attack detected"). Clients
+    #                   inside the VPC hit us via private DNS, so we allow all.
     cat > /etc/systemd/system/mlflow.service <<SERVICE
     [Unit]
     Description=MLflow Tracking Server
@@ -108,10 +114,12 @@ resource "aws_instance" "mlflow" {
       --backend-store-uri sqlite:////opt/mlflow/mlflow.db \
       --default-artifact-root s3://${var.mlflow_bucket_name}/artifacts \
       --host 0.0.0.0 \
-      --port 5000
+      --port 5000 \
+      --workers 1
     Restart=always
     RestartSec=5
     Environment=AWS_DEFAULT_REGION=us-east-1
+    Environment=MLFLOW_SERVER_ALLOWED_HOSTS=*
 
     [Install]
     WantedBy=multi-user.target

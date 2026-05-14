@@ -33,6 +33,11 @@ variable "mlflow_bucket_arn" {
   type        = string
 }
 
+variable "dataset_bucket_arn" {
+  description = "ARN of the S3 bucket that holds processed training data (read-only)."
+  type        = string
+}
+
 variable "crops" {
   description = "Comma-separated crops to load"
   type        = string

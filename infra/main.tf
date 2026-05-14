@@ -139,5 +139,6 @@ module "inference" {
   instance_type      = var.inference_instance_type
   mlflow_url         = module.mlops.mlflow_url
   mlflow_bucket_arn  = module.storage.mlflow_bucket_arn
+  dataset_bucket_arn = var.dataset_bucket_arn
   crops              = var.inference_crops
 }
