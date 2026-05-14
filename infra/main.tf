@@ -71,7 +71,7 @@ module "mlops" {
   private_subnet_ids = module.networking.private_subnet_ids
   sg_mlflow_id       = module.compute.sg_mlflow_id
   mlflow_bucket_name = module.storage.mlflow_bucket_name
-  instance_type      = var.instance_type
+  instance_type      = var.mlflow_instance_type
 }
 
 resource "aws_ecr_repository" "backend" {

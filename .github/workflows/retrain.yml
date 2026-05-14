@@ -1,5 +1,16 @@
 name: Retrain_Model_CICD
 
+# Drives training on the training EC2 (same VPC as MLflow so it can reach
+# the tracking server on its private DNS) via SSM. GitHub-hosted runners
+# can't reach private VPC resources, so we send a RunCommand to the EC2
+# rather than training on the runner itself.
+#
+# Required GitHub secrets:
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION
+#   TRAINING_INSTANCE_ID   EC2 InstanceId to drive (typically the inference EC2)
+#   S3_BUCKET              bucket with processed/<crop>/ data and the script staging area
+#   MLFLOW_TRACKING_URI    http://<mlflow-private-dns>:5000
+
 on:
   workflow_dispatch:
     inputs:
@@ -11,29 +22,23 @@ on:
       epochs:
         description: "Number of training epochs"
         required: false
-        default: "15"
+        default: "3"
       learning_rate:
         description: "Learning rate"
         required: false
         default: "0.0001"
+      stage:
+        description: "Stage to register the new model version in"
+        required: false
+        type: choice
+        default: "Staging"
+        options: [None, Staging, Production]
 
 jobs:
   retrain:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ml
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -42,26 +47,100 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ secrets.AWS_DEFAULT_REGION }}
 
-      - name: Download processed data from S3
-        run: |
-          aws s3 sync \
-            s3://${{ secrets.S3_BUCKET }}/processed/${{ github.event.inputs.crop }} \
-            data/processed/${{ github.event.inputs.crop }}
-
-      - name: Run training
+      - name: Stage remote script in S3
         env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          CROP:   ${{ github.event.inputs.crop }}
+          EPOCHS: ${{ github.event.inputs.epochs }}
+          LR:     ${{ github.event.inputs.learning_rate }}
+          STAGE:  ${{ github.event.inputs.stage }}
+          BUCKET: ${{ secrets.S3_BUCKET }}
+          MLFLOW: ${{ secrets.MLFLOW_TRACKING_URI }}
         run: |
-          python -m src.training.train \
-            --crop     ${{ github.event.inputs.crop }} \
-            --data_dir data/processed/${{ github.event.inputs.crop }} \
-            --epochs   ${{ github.event.inputs.epochs }} \
-            --lr       ${{ github.event.inputs.learning_rate }}
+          set -euo pipefail
+          cat > remote_train.sh <<REMOTE
+          #!/bin/bash
+          set -euxo pipefail
 
-      - name: Register best model in MLflow
+          export MLFLOW_TRACKING_URI="${MLFLOW}"
+          export PYTHONPATH=/opt/app/ml
+          export AWS_DEFAULT_REGION=us-east-1
+
+          cd /opt/app
+          git fetch origin
+          git checkout dev
+          git reset --hard origin/dev
+
+          cd /opt/app/ml
+          python3 -m pip install --quiet -r requirements.txt
+
+          mkdir -p data/processed
+          aws s3 sync "s3://${BUCKET}/processed/${CROP}" "data/processed/${CROP}"
+
+          python3 -m src.training.train \\
+              --crop "${CROP}" \\
+              --data_dir "data/processed/${CROP}" \\
+              --epochs "${EPOCHS}" \\
+              --lr "${LR}"
+
+          python3 -m src.registry.register \\
+              --crop "${CROP}" \\
+              --stage "${STAGE}"
+          REMOTE
+
+          aws s3 cp remote_train.sh "s3://${BUCKET}/ci/retrain/${GITHUB_RUN_ID}.sh"
+          echo "SCRIPT_S3=s3://${BUCKET}/ci/retrain/${GITHUB_RUN_ID}.sh" >> "$GITHUB_ENV"
+
+      - name: Send training command to EC2 via SSM
+        id: send
         env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          INSTANCE_ID: ${{ secrets.TRAINING_INSTANCE_ID }}
         run: |
-          python -m src.registry.register \
-            --crop  ${{ github.event.inputs.crop }} \
-            --stage Staging
+          set -euo pipefail
+
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "${INSTANCE_ID}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "retrain ${{ github.event.inputs.crop }} (run ${GITHUB_RUN_ID})" \
+            --timeout-seconds 7200 \
+            --parameters commands="aws s3 cp ${SCRIPT_S3} /tmp/retrain.sh && chmod +x /tmp/retrain.sh && /tmp/retrain.sh" \
+            --query "Command.CommandId" --output text)
+          echo "command_id=${CMD_ID}" >> "$GITHUB_OUTPUT"
+          echo "Sent SSM command: ${CMD_ID}"
+
+      - name: Wait for command to finish
+        env:
+          CMD_ID:      ${{ steps.send.outputs.command_id }}
+          INSTANCE_ID: ${{ secrets.TRAINING_INSTANCE_ID }}
+        run: |
+          set -e
+          for i in $(seq 1 240); do  # up to 2h (240 * 30s)
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$CMD_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "Status" --output text 2>/dev/null || echo "Pending")
+            echo "[$i] status=$STATUS"
+            case "$STATUS" in
+              Success) exit 0 ;;
+              Failed|Cancelled|TimedOut)
+                echo "----- stderr -----"
+                aws ssm get-command-invocation \
+                  --command-id "$CMD_ID" \
+                  --instance-id "$INSTANCE_ID" \
+                  --query "StandardErrorContent" --output text || true
+                exit 1 ;;
+              *) sleep 30 ;;
+            esac
+          done
+          echo "Timed out waiting for SSM command"
+          exit 1
+
+      - name: Print remote stdout
+        if: always()
+        env:
+          CMD_ID:      ${{ steps.send.outputs.command_id }}
+          INSTANCE_ID: ${{ secrets.TRAINING_INSTANCE_ID }}
+        run: |
+          aws ssm get-command-invocation \
+            --command-id "$CMD_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query "StandardOutputContent" --output text || true

@@ -105,18 +105,15 @@ resource "aws_instance" "inference" {
         python3 -m pip install --upgrade pip
 
         cd /opt
-        git clone https://github.com/RobertoNav/CropSight.git app || true
+        if [ ! -d /opt/app/.git ]; then
+          git clone --branch dev https://github.com/RobertoNav/CropSight.git app
+        fi
         cd /opt/app
+        git fetch origin
+        git checkout dev
+        git reset --hard origin/dev
 
-        python3 -m pip install \
-        fastapi \
-        uvicorn \
-        python-multipart \
-        pillow \
-        torch \
-        torchvision \
-        mlflow \
-        boto3
+        python3 -m pip install -r /opt/app/ml/requirements.txt
 
         cat > /etc/systemd/system/cropsight-inference.service <<SERVICE
         [Unit]

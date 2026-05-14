@@ -50,7 +50,7 @@ CROP_PREFIX = {
     "tomato": "Tomato___",
     "potato": "Potato___",
     "corn":   "Corn_(maize)___",
-    "grape":  "Grape___",
+    "pepper": "Pepper,_bell___",
 }
 
 VALID_SPLITS = ("train", "val", "all")

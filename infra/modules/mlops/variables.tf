@@ -24,7 +24,7 @@ variable "mlflow_bucket_name" {
 }
 
 variable "instance_type" {
-  description = "EC2 instance type for MLflow server"
+  description = "EC2 instance type for MLflow server. t2.micro can't hold the MLflow 3.x workers in memory."
   type        = string
-  default     = "t2.micro"
+  default     = "t3.small"
 }

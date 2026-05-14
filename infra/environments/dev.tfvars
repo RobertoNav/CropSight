@@ -26,4 +26,5 @@ db_username            = "cropsight_admin"
 lifecycle_expiration_days = 90
 
 inference_instance_type = "t3.medium"
-inference_crops         = "tomato,potato,corn,grape"
+mlflow_instance_type    = "t3.small"
+inference_crops         = "tomato,potato,corn,pepper"

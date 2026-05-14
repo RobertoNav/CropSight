@@ -30,7 +30,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-CROPS = ["tomato", "potato", "corn", "grape"]
+CROPS = ["tomato", "potato", "corn", "pepper"]
 
 
 @dataclass(frozen=True)
@@ -72,7 +72,7 @@ DEFAULT_SWEEP: dict[str, list[SweepConfig]] = {
         SweepConfig(lr=1e-4, epochs=10, batch_size=32),
         SweepConfig(lr=5e-5, epochs=10, batch_size=32),
     ],
-    "grape": [
+    "pepper": [
         SweepConfig(lr=1e-3, epochs=10, batch_size=32),
         SweepConfig(lr=1e-4, epochs=10, batch_size=32),
         SweepConfig(lr=5e-5, epochs=10, batch_size=32),

@@ -116,10 +116,16 @@ variable "inference_instance_type" {
   default     = "t3.medium"
 }
 
+variable "mlflow_instance_type" {
+  description = "EC2 instance type for the MLflow tracking server. t2.micro can't hold MLflow 3.x workers."
+  type        = string
+  default     = "t3.small"
+}
+
 variable "inference_crops" {
   description = "Comma-separated crops loadeds by inference service"
   type        = string
-  default     = "tomato,potato,corn,grape"
+  default     = "tomato,potato,corn,pepper"
 }
 
 variable "repository_url" {
