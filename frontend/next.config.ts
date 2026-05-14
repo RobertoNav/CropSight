@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
 
         destination: `${
           process.env.BACKEND_URL ||
-          "https://cropsight-dev-alb-193804761.us-east-1.elb.amazonaws.com"
+          "http://localhost:8000"
         }/api/v1/:path*`,
       },
     ];
