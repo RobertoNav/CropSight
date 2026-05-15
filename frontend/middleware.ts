@@ -29,6 +29,15 @@ function isPublic(
     pathname ===
       "/index.html" ||
 
+    /*
+      IMPORTANT:
+      don't intercept api routes
+    */
+
+    pathname.startsWith(
+      "/api"
+    ) ||
+
     pathname.startsWith(
       "/_next"
     ) ||
@@ -81,7 +90,7 @@ export function middleware(
       "/register/company";
 
   /*
-    ALLOW PUBLIC ROUTES
+    PUBLIC ROUTES
   */
 
   if (isPublic(pathname)) {
@@ -173,7 +182,7 @@ export function middleware(
 
   /*
     REDIRECT AUTH USERS
-    AWAY FROM LOGIN/REGISTER
+    AWAY FROM AUTH PAGES
   */
 
   if (isAuthPage) {
@@ -296,6 +305,6 @@ export function middleware(
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 };
